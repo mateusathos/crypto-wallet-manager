@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+        <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+        <style>
+            /* Select2 dark style tweaks to match the UI */
+            .select2-container--default .select2-selection--single {
+                background-color: #0f172a; /* slate-900 */
+                border: 1px solid #334155; /* slate-700 */
+                color: #e2e8f0; /* slate-200 */
+                height: 40px;
+            }
+            .select2-container--default .select2-selection--single .select2-selection__rendered {
+                color: #e2e8f0;
+                line-height: 38px;
+                padding-left: 8px;
+            }
+            .select2-container--default .select2-selection--single .select2-selection__arrow { height: 38px; }
+            .select2-dropdown { background-color: #0b1220; border-color: #334155; }
+            .select2-results__option { color: #e2e8f0; }
+            .select2-results__option--highlighted { background-color: #1f2937; }
+            .select2-search__field { background-color: #0f172a; color: #e2e8f0; border-color: #334155; }
+
+            /* Date input calendar icon white (WebKit) */
+            input[type="date"]::-webkit-calendar-picker-indicator {
+                filter: invert(1) brightness(2);
+                opacity: 1;
+            }
+            /* Ensure dark color scheme helps native controls */
+            input[type="date"] { color-scheme: dark; }
+        </style>
+    <title>Crypto Portfolio</title>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen">
+    {% include "partials/header.html" %}
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <!-- Flash Messages -->
+        <div class="max-w-2xl mx-auto space-y-2" id="flash-container">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="flash-msg rounded-md px-3 py-2 text-sm transition-opacity duration-300
+                          {% if category == 'error' %} bg-red-900/30 text-red-300 border border-red-800 {% elif category == 'success' %} bg-emerald-900/30 text-emerald-300 border border-emerald-800 {% else %} bg-slate-800 text-slate-200 border border-slate-700 {% endif %}">
+                          {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+        </div>
+
+        {% if portfolios|length == 0 %}
+            <!-- Estado vazio: sem portfólios -->
+             <section class="space-y-4 text-center mb-8">
+                <h1 class="text-3xl md:text-4xl font-bold text-white tracking-tight">Seu Portfólio de Cripto</h1>
+                <p class="text-slate-300 max-w-2xl mx-auto">Acompanhe e gerencie seus investimentos em um só lugar.</p>
+            </section>
+            <section class="max-w-2xl mx-auto">
+                <div class="rounded-xl border border-slate-800 bg-slate-900/40 p-8 text-center">
+                    <div class="mx-auto mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-slate-800 text-indigo-400">₿</div>
+                    <h2 class="text-xl font-semibold text-white">Crie seu primeiro portfólio</h2>
+                    <p class="mt-2 text-slate-300">Organize suas criptomoedas por objetivos e acompanhe a evolução do seu patrimônio.</p>
+
+                    <div class="mt-6 flex items-center justify-center gap-3">
+                        <button type="button" data-open-new-portfolio class="cursor-pointer inline-flex items-center rounded-md bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 text-sm font-medium shadow-sm transition-colors">Criar Portfólio</button>
+                    </div>
+                </div>
+            </section>
+        {% else %}
+            <!-- Barra de ações -->
+            <div class="mb-6 flex gap-3 justify-end">
+                <button type="button" data-open-new-portfolio class="cursor-pointer inline-flex items-center rounded-md bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 text-sm font-medium shadow-sm transition-colors">Criar Portfólio</button>
+            </div>
+
+            <div class="flex h-full gap-3">
+                <!-- Lista de portfólios -->
+                <section class="flex min-w-52 flex-col gap-2">
+                    <h1 class="text-lg font-semibold">Meus Portfolios ({{ portfolios | length }})</h1>
+                    {% for portfolio in portfolios %}
+                        <button type="button" class="cursor-pointer text-left w-full rounded-xl border border-slate-800 bg-slate-900/40 py-4 px-6 hover:bg-slate-800/50 transition-colors"
+                            data-portfolio-id="{{ portfolio.id }}" 
+                            data-portfolio-name="{{ portfolio.name }}"
+                            data-portfolio-cost="{{ portfolio.cost }}" 
+                            data-portfolio-value="{{ portfolio.value }}"
+                            data-portfolio-profit="{{ portfolio.profit }}"
+                            data-portfolio-profit_percentage="{{ portfolio.profit_percentage }}">
+                            <div class="flex items-center justify-between">
+                                <h3 class="text-lg font-semibold text-white break-all">{{ portfolio.name or 'Meu Portfólio' }}</h3>
+                            </div>
+                        </button>
+                        <script type="application/json" id="portfolio-actives-{{ portfolio.id }}">
+                            {{ portfolio.actives | tojson }}
+                        </script>
+                        <script type="application/json" id="portfolio-transactions-{{ portfolio.id }}">
+                            {{ portfolio.transactions | tojson }}
+                        </script>
+                    {% endfor %}
+                </section>
+    
+                <!-- Detalhes do portfólio selecionado -->
+                <section id="selected-portfolio" class="hidden w-full h-full">
+                    <div class="rounded-xl border border-slate-800 bg-slate-900/40 p-6">
+                        <div class="flex items-start justify-between">
+                            <div>
+                                <h3 id="sp-name" class="text-xl font-semibold text-white"></h3>
+                                <p id="sp-id" class="text-slate-400 text-sm"></p>
+                                <p id="sp-value" class="text-slate-200 font-semibold text-3xl">—</p>
+                            </div>
+
+                            <div class="flex gap-3">
+                                <button type="button" data-open-new-transaction class="cursor-pointer inline-flex items-center rounded-md bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 text-sm font-medium shadow-sm transition-colors">Adicionar transação</button>
+                                <button type="button" id="sp-delete-portfolio" aria-label="Excluir portfólio" class="cursor-pointer inline-flex items-center rounded-md bg-red-600 hover:bg-red-500 text-white p-2 text-base font-medium shadow-sm transition-colors">🗑️</button>
+                                <button type="button" id="sp-close" class="cursor-pointer text-slate-400 hover:text-slate-200" aria-label="Fechar">✕</button>
+                            </div>
+                        </div>
+    
+                        <div class="flex gap-6 mt-5">
+                            <div class="bg-slate-900 px-5 py-3 rounded-xl">
+                                <p class="text-slate-400 text-base">Lucro total</p>
+                                <div class="flex flex-col font-semibold" id="profit-info">
+                                    <p id="sp-profit" class="text-xl">—</p>
+                                    <p id="sp-profit_percentage" class="text-base">—</p>
+                                </div>
+                            </div>
+
+                            <div class="bg-slate-900 px-5 py-3 rounded-xl">
+                                <p class="text-slate-400 text-base">Custo base</p>
+                                <p id="sp-cost" class="text-slate-200 text-xl font-semibold">—</p>
+                            </div>
+                        </div>
+
+                        <div id="portfolio-actives" class="mt-10 overflow-x-auto">
+                            <h1 class="font-semibold text-xl mb-4">Ativos</h1>
+                            <table class="min-w-full hidden" id="active-card">
+                                <thead class="border-t border-t-slate-800">
+                                    <tr class="text-left text-xs">
+                                        <th class="px-4 py-3">Nome</th>
+                                        <th class="px-4 py-3">Preço Atual</th>
+                                        <th class="px-4 py-3">Holdings</th>
+                                        <th class="px-4 py-3">Lucro</th>
+                                        <th class="px-4 py-3">Média do Preço de Compra</th>
+                                        <th class="px-4 py-3">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="active-tbody"></tbody>
+                            </table>
+                            <template id="active-row-template">
+                                <tr class="border-t border-b border-slate-800">
+                                    <td class="px-4 py-6">
+                                        <div class="flex items-center gap-2">
+                                            <img data-field="image" class="h-8 w-8 rounded-full" />
+                                            <p class="font-semibold text-white">
+                                                <span data-field="name"></span> (<span data-field="symbol"></span>)
+                                            </p>
+                                        </div>
+                                    </td>
+
+                                    <td class="px-4 py-3">
+                                        <p class="font-semibold text-white" data-field="price"></p>
+                                    </td>
+
+                                    <td class="px-4 py-3">
+                                        <div class="flex flex-col">
+                                            <p class="font-semibold text-white" data-field="active-price-x-quantity"></p>
+                                            <p class="font-semibold text-gray-400 text-sm" data-field="quantity"></p>
+                                        </div>
+                                    </td>
+
+                                    <td class="px-4 py-3">
+                                        <div class="flex flex-col">
+                                            <p class="font-semibold" data-field="active-profit"></p>
+                                            <p class="font-semibold text-sm" data-field="active-profit-percentage"></p>
+                                        </div>
+                                    </td>
+
+                                    <td class="px-4 py-3">
+                                        <p class="font-semibold text-white" data-field="avgPrice"></p>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <button type="button" aria-label="Excluir ativo" class="cursor-pointer p-1 text-base bg-red-600 hover:bg-red-500 text-white rounded-md" data-action="delete-active">🗑️</button>
+                                    </td>
+                                </tr>
+                            </template>
+                            <p id="active-empty" class="font-semibold text-white">Nenhum ativo neste portfólio</p>
+                        </div>
+
+                        <div id="portfolio-transactions" class="mt-10 overflow-x-auto">
+                            <h1 class="font-semibold text-xl mb-4">Transações</h1>
+                            <table class="min-w-full hidden" id="txn-card">
+                                <thead class="border-t border-t-slate-800">
+                                    <tr class="text-left text-xs">
+                                        <th class="px-4 py-3">Data</th>
+                                        <th class="px-4 py-3">Tipo</th>
+                                        <th class="px-4 py-3">Cripto</th>
+                                        <th class="px-4 py-3">Quantidade</th>
+                                        <th class="px-4 py-3">Preço</th>
+                                        <th class="px-4 py-3">Total</th>
+                                        <th class="px-4 py-3">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="txn-tbody"></tbody>
+                            </table>
+                            <template id="txn-row-template">
+                                <tr class="border-t border-b border-slate-800">
+                                    <td class="px-4 py-3"><span data-field="date"></span></td>
+                                    <td class="px-4 py-3"><span data-field="type"></span></td>
+                                    <td class="px-4 py-6">
+                                        <div class="flex items-center gap-2">
+                                            <img data-field="image" class="h-8 w-8 rounded-full" />
+                                            <p class="font-semibold text-white">
+                                                <span data-field="name"></span> (<span data-field="symbol"></span>)
+                                            </p>
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3"><span data-field="quantity"></span></td>
+                                    <td class="px-4 py-3"><span data-field="price"></span></td>
+                                    <td class="px-4 py-3"><span data-field="total"></span></td>
+                                    <td class="px-4 py-3">
+                                        <button type="button" aria-label="Editar transação" 
+                                        class="cursor-pointer p-1 text-sm bg-purple-600 hover:bg-purple-500 text-white rounded-md" data-action="edit-txn">
+                                        ✏️</button>
+                                        <button type="button" aria-label="Excluir transação" 
+                                        class="cursor-pointer p-1 text-sm bg-red-600 hover:bg-red-500 text-white rounded-md" data-action="delete-txn">
+                                        🗑️</button>
+                                    </td>
+                                </tr>
+                            </template>
+                            <p id="txn-empty" class="font-semibold text-white">Nenhuma transação neste portfólio</p>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        {% endif %}
+    </main>
+
+    <!-- Modal: Criar Portfólio -->
+    <div id="new-portfolio-modal" class="fixed inset-0 z-50 hidden">
+        <!-- Overlay -->
+        <div class="absolute inset-0 bg-slate-950/70 backdrop-blur-sm" data-close-new-portfolio></div>
+        <!-- Dialog -->
+        <div class="relative z-10 mx-auto max-w-md w-full p-4 flex items-center min-h-screen">
+            <div class="w-full rounded-xl border border-slate-800 bg-slate-900 p-6 shadow-xl">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <h3 class="text-xl font-semibold text-white">Criar Portfólio</h3>
+                        <p class="text-slate-400 text-sm">Defina um nome para organizar seus investimentos.</p>
+                    </div>
+                    <button type="button" class="cursor-pointer text-slate-400 hover:text-slate-200" aria-label="Fechar" data-close-new-portfolio>✕</button>
+                </div>
+
+                <form action="/portfolio/create" method="POST" class="mt-6 space-y-4">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <div class="space-y-2">
+                        <label for="name" class="block text-sm text-slate-300">Nome do portfólio</label>
+                        <input id="name" name="name" type="text" required minlength="1" maxlength="50"
+                               class="w-full rounded-md bg-slate-900 border border-slate-700 text-slate-100 placeholder-slate-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                               placeholder="Ex.: Longo prazo">
+                    </div>
+
+                    <div class="flex items-center justify-end gap-3">
+                        <button type="button" class="cursor-pointer inline-flex items-center rounded-md bg-slate-800 hover:bg-slate-700 text-slate-100 px-3 py-2 text-sm font-medium border border-slate-700 transition-colors" data-close-new-portfolio>Cancelar</button>
+                        <button type="submit" class="cursor-pointer inline-flex items-center rounded-md bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 text-sm font-medium shadow-sm transition-colors">Criar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Nova Transação -->
+    <div id="new-transaction-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-slate-950/70 backdrop-blur-sm" data-close-new-transaction></div>
+        <div class="relative z-10 mx-auto max-w-md w-full p-4 flex items-center min-h-screen">
+            <div class="w-full rounded-xl border border-slate-800 bg-slate-900 p-6 shadow-xl">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <h3 class="text-xl font-semibold text-white">Adicionar transação</h3>
+                        <p class="text-slate-400 text-sm">Informe os dados da compra/venda.</p>
+                    </div>
+                    <button type="button" class="cursor-pointer text-slate-400 hover:text-slate-200" aria-label="Fechar" data-close-new-transaction>✕</button>
+                </div>
+
+                <form action="/transactions/create" method="POST" class="mt-6 space-y-4">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <input type="hidden" id="nt-portfolio-id" name="portfolio_id">
+                    <div class="space-y-2">
+                        <label for="transaction_type" class="block text-sm text-slate-300">Tipo de transação</label>
+                        <select id="transaction_type" name="transaction_type" class="w-full text-slate-200 rounded-md p-2 cursor-pointer border border-slate-700">
+                            <option value="compra" class="bg-slate-900">
+                                <p>Compra</p>
+                            </option>
+                            <option value="venda" class="bg-slate-900">
+                                <p>Venda</p>
+                            </option>
+                        </select>
+                    </div>
+                    <div class="space-y-2">
+                        <label for="cryptocurrency_id" class="block text-sm text-slate-300">Criptomoeda</label>
+                        <select id="cryptocurrency_id" name="cryptocurrency_id" class="w-full bg-slate-800 text-slate-200 rounded-md p-2 cursor-pointer">
+                            {% for crypto in cryptos %}
+                                <option value="{{ crypto.id }}" data-current-price="{{ crypto.current_price or 0 }}">
+                                    <p>{{ crypto.name }}</p>
+                                    <p>({{ crypto.symbol }})</p>
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="space-y-2">
+                            <label for="quantity" class="block text-sm text-slate-300">Quantidade</label>
+                            <input id="quantity-input" name="quantity" type="number" step="0.00000001" min="0" required
+                                   class="w-full rounded-md bg-slate-900 border border-slate-700 text-slate-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div class="space-y-2">
+                            <label for="price" class="block text-sm text-slate-300">Preço por moeda</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 select-none">R$</span>
+                                <input id="price" name="price" type="number" step="0.00000001" min="0" required
+                                       class="w-full rounded-md bg-slate-900 border border-slate-700 text-slate-100 pl-8 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2">
+                        <label for="transaction_date" class="block text-sm text-slate-300">Data</label>
+                        <input id="transaction_date" name="transaction_date" type="date" required
+                               class="w-full rounded-md bg-slate-900 border border-slate-700 text-slate-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+
+                    <div class="space-y-2 rounded-md bg-slate-800 p-4">
+                        <p class="text-sm text-slate-300 block">Valor Gasto/Recebido</p>
+                        <p id="value-spent" class="text-xl"></p>
+                    </div>
+
+                    <div class="flex items-center justify-end gap-3">
+                        <button type="button" class="cursor-pointer inline-flex items-center rounded-md bg-slate-800 hover:bg-slate-700 text-slate-100 px-3 py-2 text-sm font-medium border border-slate-700 transition-colors" data-close-new-transaction>Cancelar</button>
+                        <button type="submit" class="cursor-pointer inline-flex items-center rounded-md bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 text-sm font-medium shadow-sm transition-colors">Adicionar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Editar Transação -->
+    <div id="edit-transaction-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-slate-950/70 backdrop-blur-sm" data-close-edit-transaction></div>
+        <div class="relative z-10 mx-auto max-w-md w-full p-4 flex items-center min-h-screen">
+            <div class="w-full rounded-xl border border-slate-800 bg-slate-900 p-6 shadow-xl">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <h3 class="text-xl font-semibold text-white">Editar transação</h3>
+                    </div>
+                    <button type="button" class="cursor-pointer text-slate-400 hover:text-slate-200" aria-label="Fechar" data-close-edit-transaction>✕</button>
+                </div>
+
+                <form id="edit-transaction-form" action="#" method="POST" class="mt-6 space-y-4">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="space-y-2">
+                            <label for="quantity" class="block text-sm text-slate-300">Quantidade</label>
+                            <input id="et-quantity-input" name="quantity" type="number" step="0.00000001" min="0" required
+                                   class="w-full rounded-md bg-slate-900 border border-slate-700 text-slate-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div class="space-y-2">
+                            <label for="price" class="block text-sm text-slate-300">Preço por moeda</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 select-none">R$</span>
+                                <input id="et-price" name="price" type="number" step="0.00000001" min="0" required
+                                    class="w-full rounded-md bg-slate-900 border border-slate-700 text-slate-100 pl-8 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2">
+                        <label for="transaction_date" class="block text-sm text-slate-300">Data</label>
+                        <input id="et-transaction_date" name="transaction_date" type="date" required
+                               class="w-full rounded-md bg-slate-900 border border-slate-700 text-slate-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    
+                    <div class="flex items-center justify-end gap-3">
+                        <button type="button" class="cursor-pointer inline-flex items-center rounded-md bg-slate-800 hover:bg-slate-700 text-slate-100 px-3 py-2 text-sm font-medium border border-slate-700 transition-colors" data-close-edit-transaction>Cancelar</button>
+                        <button type="button" id="confirm-edit" class="cursor-pointer inline-flex items-center rounded-md bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 text-sm font-medium shadow-sm transition-colors">Editar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    (() => {
+        // Auto-dismiss flash messages after 5s
+        const flashMsgs = document.querySelectorAll('#flash-container .flash-msg');
+        if (flashMsgs.length > 0) {
+            setTimeout(() => {
+                flashMsgs.forEach(el => {
+                    el.classList.add('opacity-0');
+                    setTimeout(() => el.remove(), 300);
+                });
+            }, 5000);
+        }
+        // Modal: Criar Portfólio
+        const npModal = document.getElementById('new-portfolio-modal');
+        const npOpeners = document.querySelectorAll('[data-open-new-portfolio]');
+        const npClosers = document.querySelectorAll('[data-close-new-portfolio]');
+        function openNp() { npModal.classList.remove('hidden'); }
+        function closeNp() { npModal.classList.add('hidden'); }
+        npOpeners.forEach(btn => btn.addEventListener('click', openNp));
+        npClosers.forEach(btn => btn.addEventListener('click', closeNp));
+
+        // Painel de detalhes do portfólio
+        const sp = document.getElementById('selected-portfolio');
+        const spName = document.getElementById('sp-name');
+        const spId = document.getElementById('sp-id');
+        const spClose = document.getElementById('sp-close');
+        const spCost = document.getElementById('sp-cost');
+        const spValue = document.getElementById('sp-value');
+        const spProfit = document.getElementById('sp-profit');
+        const spProfit_percentage = document.getElementById('sp-profit_percentage');
+        const portfolioButtons = document.querySelectorAll('[data-portfolio-id]');
+        const headerDeleteBtn = document.getElementById('sp-delete-portfolio');
+        const activesContainer = document.getElementById('portfolio-actives');
+        const activeCard = document.getElementById('active-card');
+        const activeEmpty = document.getElementById('active-empty');
+        const activeTbody = document.getElementById('active-tbody');
+        const activeRowTpl = document.getElementById('active-row-template');
+        const txnCard = document.getElementById('txn-card');
+        const txnEmpty = document.getElementById('txn-empty');
+        const txnTbody = document.getElementById('txn-tbody');
+        const txnRowTpl = document.getElementById('txn-row-template');
+        const csrfToken = "{{ csrf_token }}";
+        const etModal = document.getElementById('edit-transaction-modal');
+        const etClosers = document.querySelectorAll('[data-close-edit-transaction]');
+        const etPriceInput = document.getElementById('et-price');
+        const etQtdInput = document.getElementById('et-quantity-input');
+        const etDateInput = document.getElementById('et-transaction_date');
+        const confirmEditBtn = document.getElementById('confirm-edit');
+        const etForm = document.getElementById('edit-transaction-form');
+        function openEtModal() {
+            etModal.classList.remove("hidden");
+        }
+        function closeEtModal() {
+            etModal.classList.add("hidden");
+        }
+        if (etForm) {
+            etForm.addEventListener('submit', (event) => event.preventDefault());
+        }
+        etClosers.forEach(button => { button.addEventListener('click', closeEtModal); });
+
+        function formatBRL(v) {
+            const num = Number(v);
+            if (!isFinite(num)) return '—';
+            return num.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
+
+        function formatPercentage(v) {
+            const num = Number(v);
+            if (num >= 0) {
+                return `+${num.toFixed(2).replace(".", ",")}%`
+            }
+            return `${num.toFixed(2).replace(".", ",")}%`
+        }
+
+        function renderActives(actives) {
+            // Oculta/limpa estados
+            activeCard.classList.add('hidden');
+            activeEmpty.classList.add('hidden');
+            activeTbody.innerHTML = '';
+
+            if (!actives || actives.length === 0) {
+                activeEmpty.classList.remove('hidden');
+                return;
+            }
+
+            // Renderiza todas as linhas usando o template
+            actives.forEach(a => {
+                const row = activeRowTpl.content.firstElementChild.cloneNode(true);
+                row.querySelector('[data-field="image"]').src = a.image_url;
+                row.querySelector('[data-field="name"]').textContent = a.name;
+                row.querySelector('[data-field="symbol"]').textContent = a.symbol;
+                row.querySelector('[data-field="price"]').textContent = formatBRL(a.current_price);
+                row.querySelector('[data-field="quantity"]').textContent = `${String(a.quantity)} ${a.symbol}`;
+                row.querySelector('[data-field="avgPrice"]').textContent = formatBRL(a.average_purchase_price);
+                const activeProfit = a.profit_total;
+                row.querySelector('[data-field="active-profit"]').textContent = formatBRL(activeProfit);
+                const activePriceXQuantity = a.current_price * a.quantity
+                row.querySelector('[data-field="active-price-x-quantity"]').textContent = formatBRL(activePriceXQuantity);
+                const activeProfitPercentage = a.total_buy_cost > 0 ? (activeProfit / a.total_buy_cost) * 100 : 0
+                row.querySelector('[data-field="active-profit-percentage"]').textContent = formatPercentage(activeProfitPercentage);
+
+                // Bind delete asset
+                const delBtn = row.querySelector('[data-action="delete-active"]');
+                delBtn.addEventListener('click', async () => {
+                    if (!currentPortfolioId) return;
+                    if (!a.cryptocurrency_id) return;
+                    if (!confirm(`Excluir ativo ${a.symbol}? Todas as transações serão removidas.`)) return;
+                    const resp = await fetch(`/portfolio/${currentPortfolioId}/asset/${a.cryptocurrency_id}/delete`, {
+                        method: 'POST',
+                        headers: { 'X-CSRF-Token': csrfToken },
+                    });
+                    if (resp.ok) {
+                        location.href = '/portfolio';
+                    }
+                });
+
+                if (activeProfit > 0) {
+                    row.querySelector('[data-field="active-profit"]').classList.add("text-green-500")
+                    row.querySelector('[data-field="active-profit-percentage"]').classList.add("text-green-500")
+                } else if (activeProfit < 0) {
+                    row.querySelector('[data-field="active-profit"]').classList.add("text-red-500")
+                    row.querySelector('[data-field="active-profit-percentage"]').classList.add("text-red-500")
+                } else {
+                    row.querySelector('[data-field="active-profit"]').classList.add("text-white")
+                    row.querySelector('[data-field="active-profit-percentage"]').classList.add("text-white")
+                }
+
+                activeTbody.appendChild(row);
+            });
+
+            activeCard.classList.remove('hidden');
+        }
+
+        function renderTransactions(txns) {
+            txnCard.classList.add('hidden');
+            txnEmpty.classList.add('hidden');
+            txnTbody.innerHTML = '';
+
+            if (!txns || txns.length === 0) {
+                txnEmpty.classList.remove('hidden');
+                return;
+            }
+
+            txns.forEach(t => {
+                const row = txnRowTpl.content.firstElementChild.cloneNode(true);
+                let data = String(t.date)
+                data = data.split("-").reverse().join("/");
+                row.querySelector('[data-field="date"]').textContent = data;
+                row.querySelector('[data-field="type"]').textContent = t.type.replace(/^./, c => c.toUpperCase());;
+                row.querySelector('[data-field="image"]').src = t.image_url;
+                row.querySelector('[data-field="name"]').textContent = t.name;
+                row.querySelector('[data-field="symbol"]').textContent = t.symbol;
+                row.querySelector('[data-field="quantity"]').textContent = String(t.quantity);
+                row.querySelector('[data-field="price"]').textContent = formatBRL(t.price);
+                row.querySelector('[data-field="total"]').textContent = formatBRL(t.total);
+                const delBtn = row.querySelector('[data-action="delete-txn"]');
+                const editBtn = row.querySelector('[data-action="edit-txn"]');
+                delBtn.addEventListener('click', async () => {
+                    if (!confirm('Excluir esta transação?')) return;
+                    const resp = await fetch(`/transactions/${t.id}/delete`, {
+                        method: 'POST',
+                        headers: { 'X-CSRF-Token': csrfToken },
+                    });
+                    if (resp.ok) {
+                        location.href = '/portfolio';
+                    }
+                });
+
+                editBtn.addEventListener('click', () => {
+                    openEtModal();
+                    etPriceInput.value = t.price;
+                    etQtdInput.value = t.quantity;
+                    etDateInput.value = t.date;
+                    confirmEditBtn.onclick = async () => {
+                        const data = {
+                            type: t.type,
+                            price: parseFloat(etPriceInput.value),
+                            quantity: parseFloat(etQtdInput.value),
+                            date: etDateInput.value,
+                        };
+                        const resp = await fetch(`/transactions/${t.id}/edit`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRF-Token': csrfToken,
+                            },
+                            body: JSON.stringify(data),
+                        });
+                        if (resp.ok) {
+                            location.href = '/portfolio';
+                        }
+                    };
+                });
+                txnTbody.appendChild(row);
+            });
+
+            txnCard.classList.remove('hidden');
+        }
+
+        let currentPortfolioId = null;
+        let selectedBtn = null;
+        portfolioButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                currentPortfolioId = btn.getAttribute('data-portfolio-id');
+                const name = btn.getAttribute('data-portfolio-name');
+                const cost = btn.getAttribute('data-portfolio-cost');
+                const value = btn.getAttribute('data-portfolio-value');
+                const profit = btn.getAttribute('data-portfolio-profit');
+                const profitPercentage = Number(btn.getAttribute('data-portfolio-profit_percentage'));
+                spName.textContent = name;
+                spId.textContent = `ID: ${currentPortfolioId}`;
+                spCost.textContent = formatBRL(cost);
+                spValue.textContent = formatBRL(value);
+                spProfit.textContent = formatBRL(profit);
+                spProfit_percentage.textContent = `${profitPercentage.toFixed(2).replace(".", ",")}%`;
+                if (Number(profit) > 0) {
+                    spProfit.classList.add("text-green-500")
+                    spProfit_percentage.classList.add("text-green-500")
+                } else if (Number(profit) < 0) {
+                    spProfit.classList.add("text-red-500")
+                    spProfit_percentage.classList.add("text-red-500")
+                } else {
+                    spProfit.classList.add("text-white")
+                    spProfit_percentage.classList.add("text-white")
+                }
+                const jsonEl = document.getElementById(`portfolio-actives-${currentPortfolioId}`);
+                const actives = jsonEl ? JSON.parse(jsonEl.textContent) : [];
+                renderActives(actives);
+                const txEl = document.getElementById(`portfolio-transactions-${currentPortfolioId}`);
+                const txns = txEl ? JSON.parse(txEl.textContent) : [];
+                renderTransactions(txns);
+                sp.classList.remove('hidden');
+                if (selectedBtn && selectedBtn !== btn) {
+                    selectedBtn.classList.remove('!bg-slate-800/80');
+                }
+                btn.classList.add('!bg-slate-800/80')
+                selectedBtn = btn
+            });
+        });
+        // Delete portfolio (header button)
+        headerDeleteBtn.addEventListener('click', async () => {
+            if (!currentPortfolioId) return;
+            if (!confirm('Excluir este portfólio e todas as suas transações?')) return;
+            const resp = await fetch(`/portfolio/${currentPortfolioId}/delete`, {
+                method: 'POST',
+                headers: { 'X-CSRF-Token': csrfToken },
+            });
+            if (resp.ok) {
+                location.href = '/portfolio';
+            }
+        });
+        // Seleciona automaticamente o primeiro portfólio ao carregar
+        if (portfolioButtons.length > 0) {
+            portfolioButtons[0].click();
+        }
+        spClose.addEventListener('click', () => { 
+            sp.classList.add('hidden'); 
+            if (selectedBtn) { selectedBtn.classList.remove('!bg-slate-800/80'); }
+            selectedBtn = null;
+        });
+
+        // Modal: Nova Transação
+        const ntModal = document.getElementById('new-transaction-modal');
+        const ntOpeners = document.querySelectorAll('[data-open-new-transaction]');
+        const ntClosers = document.querySelectorAll('[data-close-new-transaction]');
+        const ntPortfolioId = document.getElementById('nt-portfolio-id');
+        const ntCryptoSelect = document.getElementById('cryptocurrency_id');
+        const ntPriceInput = document.getElementById('price');
+        const ntQtdInput = document.getElementById('quantity-input');
+        const ntDateInput = document.getElementById('transaction_date');
+        function setDefaultPriceFromCrypto(evt) {
+            if (!ntCryptoSelect || !ntPriceInput) return;
+            let priceAttr = null;
+            // Prefer data from Select2 event when available
+            if (evt && evt.params && evt.params.data && evt.params.data.element) {
+                priceAttr = evt.params.data.element.getAttribute('data-current-price');
+            } else {
+                const opt = ntCryptoSelect.querySelector(`option[value="${ntCryptoSelect.value}"]`);
+                priceAttr = opt ? opt.getAttribute('data-current-price') : null;
+            }
+            const v = priceAttr ? parseFloat(priceAttr) : NaN;
+            if (Number.isFinite(v) && v > 0) {
+                ntPriceInput.value = v;
+            } else {
+                // keep current user input or clear if empty
+                if (!ntPriceInput.value) ntPriceInput.value = '';
+            }
+        }
+        if (ntCryptoSelect) {
+            ntCryptoSelect.addEventListener('change', setDefaultPriceFromCrypto);
+        }
+        // Initialize Select2 for searchable crypto dropdown
+        if (window.jQuery && ntCryptoSelect) {
+            jQuery(function($){
+                const $sel = $(ntCryptoSelect);
+                $sel.select2({
+                    width: '100%',
+                    dropdownParent: $('#new-transaction-modal'),
+                    placeholder: 'Selecione uma criptomoeda',
+                    minimumResultsForSearch: 0
+                });
+                // Update suggested price on Select2 selection
+                $sel.on('select2:select', (e) => setDefaultPriceFromCrypto(e));
+            });
+        }
+        function setValueSpent() {
+            if (!ntPriceInput || !ntQtdInput) return;
+            const price = parseFloat(ntPriceInput.value) || 0;
+            const quantity = parseFloat(ntQtdInput.value) || 0;
+            const priceSpent = price * quantity;
+            document.getElementById('value-spent').textContent = formatBRL(priceSpent);
+        }
+        if (ntPriceInput) {
+            ntPriceInput.addEventListener('input', setValueSpent);
+        }
+
+        if (ntQtdInput) {
+            ntQtdInput.addEventListener('input', setValueSpent);
+        }
+        function openNt() {
+            if (!currentPortfolioId) return;
+            ntPortfolioId.value = currentPortfolioId;
+            ntModal.classList.remove('hidden');
+            // Default date to today (YYYY-MM-DD)
+            if (ntDateInput) {
+                const today = new Date();
+                const yyyy = today.getFullYear();
+                const mm = String(today.getMonth() + 1).padStart(2, '0');
+                const dd = String(today.getDate()).padStart(2, '0');
+                ntDateInput.value = `${yyyy}-${mm}-${dd}`;
+            }
+            setDefaultPriceFromCrypto();
+            setValueSpent();
+        }
+        function closeNt() { ntModal.classList.add('hidden'); }
+        ntOpeners.forEach(btn => btn.addEventListener('click', openNt));
+        ntClosers.forEach(btn => btn.addEventListener('click', closeNt));
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeNp();
+                closeNt();
+                closeEtModal();
+            }
+        });
+    })();
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <title>Crypto Portfolio</title>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen">
+    {% include "partials/header.html" %}
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <section class="space-y-6">
+            <div class="flex justify-between">
+                <h1 class="text-2xl font-semibold text-left">Lista de Criptomoedas</h1>
+                <!-- Search Bar -->
+                <div>
+                    <input 
+                        type="text" 
+                        id="search-bar" 
+                        placeholder="Pesquisar" 
+                        class="min-w-40 px-4 py-2 rounded-lg bg-slate-900/60 text-slate-100 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="min-w-full rounded-lg" id="crypto-table">
+                    <thead class="border-t border-t-slate-800">
+                        <tr class="text-left">
+                            <th class="px-4 py-3">#</th>
+                            <th class="px-4 py-3">Moeda</th>
+                            <th class="px-4 py-3">Preço</th>
+                            <th class="px-4 py-3">Δ 24h</th>
+                            <th class="px-4 py-3">Cap. de Mercado</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for crypto in cryptos %}
+                        <tr class="border-t border-t-slate-800 hover:bg-slate-900/70">
+                            <td class="px-4 py-3">
+                                {{ loop.index }}
+                            </td>
+
+                            <td class="px-4 py-3 flex items-center gap-3">
+                                <img src="{{ crypto.image_url }}" width="32">
+                                <strong class="crypto-name">{{ crypto.name }}</strong>
+                                <p class="text-slate-400 crypto-symbol">{{ crypto.symbol }}</p>
+                            </td>
+
+                            <td class="px-4 py-3">
+                                {{ crypto.current_price_brl }}
+                            </td>
+
+                            <td class="px-4 py-3">
+                                {% if crypto.price_change_percentage_24h > 0 %}
+                                    <span class="text-green-500">
+                                        +{{ "%.2f"|format(crypto.price_change_percentage_24h) }}%
+                                    </span>
+                                {% elif crypto.price_change_percentage_24h == 0 %}
+                                    <span class="text-yellow-500">
+                                        &nbsp;{{ "%.2f"|format(crypto.price_change_percentage_24h) }}%
+                                    </span>
+                                {% else %}
+                                    <span class="text-red-500">
+                                        {{ "%.2f"|format(crypto.price_change_percentage_24h) }}%
+                                    </span>
+                                {% endif %}
+                            </td>
+
+                            <td class="px-4 py-3">
+                                {{ crypto.current_marketcap_brl }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        document.getElementById('search-bar').addEventListener('input', function() {
+            const filter = this.value.toLowerCase();
+            const rows = document.querySelectorAll('#crypto-table tbody tr');
+
+            rows.forEach(row => {
+                const name = row.querySelector('.crypto-name').textContent.toLowerCase();
+                const symbol = row.querySelector('.crypto-symbol').textContent.toLowerCase();
+
+                if (name.includes(filter) || symbol.includes(filter)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+    </script>
+</body>
+</html>

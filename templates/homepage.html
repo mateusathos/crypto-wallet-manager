@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <title>Crypto Portfolio</title>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen">
+    {% include "partials/header.html" %}
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <!-- Hero -->
+        <section class="relative overflow-hidden rounded-2xl border border-slate-800 bg-gradient-to-br from-slate-900 to-slate-950 p-8 mb-12">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+                <div class="space-y-4">
+                    <h1 class="text-3xl md:text-4xl font-bold text-white tracking-tight">Gerencie suas criptomoedas com facilidade</h1>
+                    <p class="text-slate-300">Acompanhe seu portfólio, veja lucros realizados e não realizados, e monitore preços em tempo real com uma interface moderna.</p>
+                    <div class="flex flex-wrap gap-3">
+                        <a href="/portfolio" class="cursor-pointer inline-flex items-center rounded-md bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 text-sm font-medium shadow-sm transition-colors">Ver Portfólio</a>
+                        <a href="/portfolio" class="cursor-pointer inline-flex items-center rounded-md bg-slate-800 hover:bg-slate-700 text-slate-100 px-4 py-2 text-sm font-medium border border-slate-700 transition-colors">Criar Portfólio</a>
+                        <a href="/login" class="cursor-pointer inline-flex items-center rounded-md bg-slate-900 hover:bg-slate-800 text-slate-100 px-4 py-2 text-sm font-medium border border-slate-700 transition-colors">Entrar</a>
+                    </div>
+                </div>
+                <div class="relative">
+                    <!-- Visual placeholder card -->
+                    <div class="rounded-xl border border-slate-800 bg-slate-900/40 p-6 shadow-xl">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="h-10 w-10 rounded-full bg-indigo-600/20 grid place-items-center text-indigo-400">₿</div>
+                                <div>
+                                    <p class="text-slate-200 font-semibold">Meu Portfólio</p>
+                                    <p class="text-slate-400 text-sm">Resumo visual</p>
+                                </div>
+                            </div>
+                            <span class="text-emerald-400 text-sm">+12.3%</span>
+                        </div>
+                        <div class="mt-5 grid grid-cols-3 gap-4">
+                            <div class="rounded-lg bg-slate-900 p-4">
+                                <p class="text-slate-400 text-xs">Valor atual</p>
+                                <p class="text-slate-200 font-semibold">R$ 25.430,00</p>
+                            </div>
+                            <div class="rounded-lg bg-slate-900 p-4">
+                                <p class="text-slate-400 text-xs">Lucro total</p>
+                                <p class="text-emerald-400 font-semibold">R$ 3.120,00</p>
+                            </div>
+                            <div class="rounded-lg bg-slate-900 p-4">
+                                <p class="text-slate-400 text-xs">Custo total</p>
+                                <p class="text-slate-200 font-semibold">R$ 22.310,00</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features -->
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold text-white mb-6">Recursos principais</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="rounded-xl border border-slate-800 bg-slate-900/40 p-6">
+                    <div class="h-10 w-10 rounded-md bg-indigo-600/20 text-indigo-400 grid place-items-center mb-3">📈</div>
+                    <p class="text-slate-200 font-semibold">Cálculo de custo médio</p>
+                    <p class="text-slate-400 text-sm mt-1">Média ponderada por ativo e lucros realizados/não realizados com precisão Decimal.</p>
+                </div>
+                <div class="rounded-xl border border-slate-800 bg-slate-900/40 p-6">
+                    <div class="h-10 w-10 rounded-md bg-emerald-600/20 text-emerald-400 grid place-items-center mb-3">⚡</div>
+                    <p class="text-slate-200 font-semibold">Preços em tempo real</p>
+                    <p class="text-slate-400 text-sm mt-1">Integração com serviço de mercado para listar, detalhar e acompanhar preços.</p>
+                </div>
+                <div class="rounded-xl border border-slate-800 bg-slate-900/40 p-6">
+                    <div class="h-10 w-10 rounded-md bg-sky-600/20 text-sky-400 grid place-items-center mb-3">🔐</div>
+                    <p class="text-slate-200 font-semibold">Acesso seguro</p>
+                    <p class="text-slate-400 text-sm mt-1">Autenticação, organização por portfólio e histórico de transações estruturado.</p>
+                </div>
+                <div class="rounded-xl border border-slate-800 bg-slate-900/40 p-6">
+                    <div class="h-10 w-10 rounded-md bg-amber-600/20 text-amber-400 grid place-items-center mb-3">🧮</div>
+                    <p class="text-slate-200 font-semibold">Lucro percentual</p>
+                    <p class="text-slate-400 text-sm mt-1">Percentual de lucro calculado sobre o cost basis agregado.</p>
+                </div>
+                <div class="rounded-xl border border-slate-800 bg-slate-900/40 p-6">
+                    <div class="h-10 w-10 rounded-md bg-fuchsia-600/20 text-fuchsia-400 grid place-items-center mb-3">🧩</div>
+                    <p class="text-slate-200 font-semibold">Arquitetura modular</p>
+                    <p class="text-slate-400 text-sm mt-1">Rotas, serviços, modelos e templates desacoplados para manutenção simples.</p>
+                </div>
+                <div class="rounded-xl border border-slate-800 bg-slate-900/40 p-6">
+                    <div class="h-10 w-10 rounded-md bg-rose-600/20 text-rose-400 grid place-items-center mb-3">🗑️</div>
+                    <p class="text-slate-200 font-semibold">Gestão completa</p>
+                    <p class="text-slate-400 text-sm mt-1">Crie portfólios, adicione transações e exclua portfólios, ativos e transações facilmente.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- How it works -->
+        <section class="mb-12">
+            <h2 class="text-2xl font-bold text-white mb-6">Como funciona</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="rounded-xl border border-slate-800 bg-slate-900/40 p-6">
+                    <p class="text-slate-200 font-semibold">1. Crie um portfólio</p>
+                    <p class="text-slate-400 text-sm mt-1">Defina um nome e organize seus objetivos.</p>
+                    <a href="/portfolio" class="cursor-pointer inline-flex items-center rounded-md bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 text-xs font-medium shadow-sm transition-colors mt-3">Começar</a>
+                </div>
+                <div class="rounded-xl border border-slate-800 bg-slate-900/40 p-6">
+                    <p class="text-slate-200 font-semibold">2. Adicione transações</p>
+                    <p class="text-slate-400 text-sm mt-1">Compras e vendas com datas, preços e quantidades.</p>
+                </div>
+                <div class="rounded-xl border border-slate-800 bg-slate-900/40 p-6">
+                    <p class="text-slate-200 font-semibold">3. Acompanhe resultados</p>
+                    <p class="text-slate-400 text-sm mt-1">Veja lucros, custo total e percentuais por ativo.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- CTA -->
+        <section class="text-center space-y-3">
+            <p class="text-slate-300">Pronto para começar?</p>
+            <div class="flex items-center justify-center gap-3">
+                <a href="/portfolio" class="cursor-pointer inline-flex items-center rounded-md bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 text-sm font-medium shadow-sm transition-colors">Criar Portfólio</a>
+                <a href="/login" class="cursor-pointer inline-flex items-center rounded-md bg-slate-800 hover:bg-slate-700 text-slate-100 px-4 py-2 text-sm font-medium border border-slate-700 transition-colors">Entrar</a>
+            </div>
+        </section>
+    </main>
+</body>
+</html>
