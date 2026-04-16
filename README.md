@@ -2,7 +2,7 @@
 
 Aplicação Flask para gestão de portfólio de criptomoedas, com autenticação, controle de transações (compra/venda), cálculo de performance e atualização de preços via CoinGecko.
 
-O projeto está preparado para usar **Turso (libSQL)** e para deploy na **Vercel**, incluindo cron automático para atualização de preços a cada 3 horas.
+O projeto está preparado para usar **Turso (libSQL)** e para deploy na **Vercel**, com atualização automática de preços via agendamento externo.
 
 ## Funcionalidades
 
@@ -34,8 +34,9 @@ O projeto está preparado para usar **Turso (libSQL)** e para deploy na **Vercel
 - `services/`: lógica de domínio e integrações (`coingecko`, `price_update`, `portfolio`, `turso`)
 - `migrate_to_turso.py`: publicação de snapshot SQLite para o Turso
 - `sync_turso.py`: reenvio manual do snapshot local para o Turso
-- `vercel.json`: configuração de runtime e cron da Vercel
+- `vercel.json`: configuração de runtime na Vercel
 - `api/index.py`: entrypoint serverless para Vercel
+- `.github/workflows/update-prices.yml`: agendamento a cada 3 horas via GitHub Actions
 
 ## Pré-requisitos
 
@@ -104,9 +105,6 @@ Authorization: Bearer <CRON_SECRET>
 O projeto já está preparado para Vercel com:
 
 - entrypoint serverless em `api/index.py`
-- cron configurado em `vercel.json`:
-  - `0 */3 * * *` (a cada 3 horas)
-  - path `/api/cron/update-prices`
 
 No painel da Vercel, configure as variáveis:
 
@@ -116,6 +114,21 @@ No painel da Vercel, configure as variáveis:
 - `TURSO_LOCAL_DB_PATH=/tmp/app.db`
 - `CRON_SECRET`
 - `COINGECKO_API_KEY` (opcional)
+
+## Agendamento a cada 3 horas (Hobby-friendly)
+
+Para plano Hobby da Vercel, use o workflow já incluído em:
+
+- `.github/workflows/update-prices.yml`
+
+Ele chama:
+
+- `GET /api/cron/update-prices`
+
+Configure estes **Repository Secrets** no GitHub:
+
+- `CRON_URL` (ex.: `https://seu-dominio.vercel.app/api/cron/update-prices`)
+- `CRON_SECRET` (mesmo valor configurado na Vercel)
 
 ## Testes
 
