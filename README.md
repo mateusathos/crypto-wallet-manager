@@ -70,8 +70,8 @@ Aplicação disponível em `http://127.0.0.1:5000`.
 
 ## Persistência no Turso
 
-- A aplicação sincroniza leitura do Turso no início das requisições.
-- Após operações de escrita (cadastro, portfólios, transações e cron de preços), publica automaticamente o snapshot local no Turso.
+- A aplicação sincroniza leitura do Turso nas requisições de leitura.
+- Após operações de escrita (cadastro, portfólios, transações e cron de preços), faz sincronização incremental com o Turso.
 
 ## Publicar snapshot para Turso
 

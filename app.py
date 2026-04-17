@@ -9,7 +9,7 @@ from routes.criptomoedas import crypto_bp
 from routes.homepage import homepage_bp
 from routes.auth import auth_bp
 from routes.portfolio import portfolio_bp
-from services.turso_service import init_turso_sync, push_snapshot_now, sync_now
+from services.turso_service import init_turso_sync, sync_now
 import models  # MUITO IMPORTANTE
 
 
@@ -45,7 +45,8 @@ def create_app():
 
     @app.before_request
     def ensure_session_and_csrf():
-        sync_now(app)
+        if request.method not in {"POST", "PUT", "PATCH", "DELETE"}:
+            sync_now(app)
         if "csrf_token" not in session:
             session["csrf_token"] = secrets.token_urlsafe(32)
         session.permanent = True
@@ -54,7 +55,7 @@ def create_app():
     @app.after_request
     def push_sync_after_write(response):
         if request.method in {"POST", "PUT", "PATCH", "DELETE"} and response.status_code < 500:
-            push_snapshot_now(app)
+            sync_now(app)
         return response
 
     @app.context_processor
