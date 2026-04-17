@@ -13,12 +13,11 @@
         <section class="space-y-6">
             <div class="flex justify-between">
                 <h1 class="text-2xl font-semibold text-left">Lista de Criptomoedas</h1>
-                <!-- Search Bar -->
                 <div>
-                    <input 
-                        type="text" 
-                        id="search-bar" 
-                        placeholder="Pesquisar" 
+                    <input
+                        type="text"
+                        id="search-bar"
+                        placeholder="Pesquisar"
                         class="min-w-40 px-4 py-2 rounded-lg bg-slate-900/60 text-slate-100 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                 </div>
@@ -38,15 +37,33 @@
 
                     <tbody>
                         {% for crypto in cryptos %}
-                        <tr class="border-t border-t-slate-800 hover:bg-slate-900/70">
+                        <tr
+                            class="border-t border-t-slate-800 hover:bg-slate-900/70 cursor-pointer crypto-row focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            tabindex="0"
+                            role="button"
+                            data-name="{{ crypto.name }}"
+                            data-symbol="{{ crypto.symbol|upper }}"
+                            data-coingecko-id="{{ crypto.coingecko_id }}"
+                            data-image-url="{{ crypto.image_url or '' }}"
+                            data-current-price="{{ crypto.current_price_brl }}"
+                            data-marketcap="{{ crypto.current_marketcap_brl }}"
+                            data-change="{{ "%.2f"|format(crypto.price_change_percentage_24h) }}"
+                            data-last-updated="{{ crypto.last_updated }}"
+                        >
                             <td class="px-4 py-3">
                                 {{ loop.index }}
                             </td>
 
                             <td class="px-4 py-3 flex items-center gap-3">
-                                <img src="{{ crypto.image_url }}" width="32">
+                                {% if crypto.image_url %}
+                                <img src="{{ crypto.image_url }}" width="32" alt="Logo de {{ crypto.name }}">
+                                {% else %}
+                                <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-xs font-semibold">
+                                    {{ crypto.symbol[:3]|upper }}
+                                </div>
+                                {% endif %}
                                 <strong class="crypto-name">{{ crypto.name }}</strong>
-                                <p class="text-slate-400 crypto-symbol">{{ crypto.symbol }}</p>
+                                <p class="text-slate-400 crypto-symbol">{{ crypto.symbol|upper }}</p>
                             </td>
 
                             <td class="px-4 py-3">
@@ -80,11 +97,112 @@
         </section>
     </main>
 
-    <script>
-        document.getElementById('search-bar').addEventListener('input', function() {
-            const filter = this.value.toLowerCase();
-            const rows = document.querySelectorAll('#crypto-table tbody tr');
+    <div id="crypto-modal" class="fixed inset-0 bg-black/70 hidden items-center justify-center p-4 z-50" aria-hidden="true">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md p-6 space-y-4 relative">
+            <button
+                type="button"
+                id="close-crypto-modal"
+                class="absolute right-4 top-4 text-slate-400 hover:text-slate-100 text-xl cursor-pointer"
+                aria-label="Fechar modal"
+            >
+                ×
+            </button>
 
+            <div class="flex items-center gap-4 pr-8">
+                <img id="modal-crypto-image" src="" alt="" class="w-14 h-14 rounded-full bg-slate-800 object-cover">
+                <div>
+                    <h2 id="modal-crypto-name" class="text-xl font-semibold"></h2>
+                    <p id="modal-crypto-symbol" class="text-slate-400"></p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 gap-3 text-sm">
+                <div>
+                    <p class="text-slate-400">Preço atual</p>
+                    <p id="modal-crypto-price" class="font-medium"></p>
+                </div>
+                <div>
+                    <p class="text-slate-400">Variação 24h</p>
+                    <p id="modal-crypto-change" class="font-medium"></p>
+                </div>
+                <div>
+                    <p class="text-slate-400">Market cap</p>
+                    <p id="modal-crypto-marketcap" class="font-medium"></p>
+                </div>
+                <div>
+                    <p class="text-slate-400">ID CoinGecko</p>
+                    <p id="modal-crypto-coingecko-id" class="font-medium"></p>
+                </div>
+                <div>
+                    <p class="text-slate-400">Última atualização</p>
+                    <p id="modal-crypto-last-updated" class="font-medium"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const searchBar = document.getElementById('search-bar');
+        const rows = document.querySelectorAll('#crypto-table tbody tr');
+        const modal = document.getElementById('crypto-modal');
+        const closeModalButton = document.getElementById('close-crypto-modal');
+        const modalCryptoName = document.getElementById('modal-crypto-name');
+        const modalCryptoSymbol = document.getElementById('modal-crypto-symbol');
+        const modalCryptoImage = document.getElementById('modal-crypto-image');
+        const modalCryptoPrice = document.getElementById('modal-crypto-price');
+        const modalCryptoChange = document.getElementById('modal-crypto-change');
+        const modalCryptoMarketcap = document.getElementById('modal-crypto-marketcap');
+        const modalCryptoCoingeckoId = document.getElementById('modal-crypto-coingecko-id');
+        const modalCryptoLastUpdated = document.getElementById('modal-crypto-last-updated');
+        const changeColorClasses = ['text-green-500', 'text-yellow-500', 'text-red-500'];
+
+        function openCryptoModal(row) {
+            const changeValue = parseFloat(row.dataset.change || '0');
+            const positive = changeValue > 0;
+            const neutral = changeValue === 0;
+
+            modalCryptoName.textContent = row.dataset.name;
+            modalCryptoSymbol.textContent = row.dataset.symbol;
+            modalCryptoPrice.textContent = row.dataset.currentPrice;
+            modalCryptoMarketcap.textContent = row.dataset.marketcap;
+            modalCryptoCoingeckoId.textContent = row.dataset.coingeckoId;
+            modalCryptoLastUpdated.textContent = row.dataset.lastUpdated;
+
+            if (row.dataset.imageUrl) {
+                modalCryptoImage.src = row.dataset.imageUrl;
+                modalCryptoImage.alt = `Logo de ${row.dataset.name}`;
+            } else {
+                modalCryptoImage.src = '';
+                modalCryptoImage.alt = '';
+            }
+
+            modalCryptoChange.classList.remove(...changeColorClasses);
+            if (positive) {
+                modalCryptoChange.textContent = `+${changeValue.toFixed(2)}%`;
+                modalCryptoChange.classList.add('text-green-500');
+            } else if (neutral) {
+                modalCryptoChange.textContent = `${changeValue.toFixed(2)}%`;
+                modalCryptoChange.classList.add('text-yellow-500');
+            } else {
+                modalCryptoChange.textContent = `${changeValue.toFixed(2)}%`;
+                modalCryptoChange.classList.add('text-red-500');
+            }
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            modal.setAttribute('aria-hidden', 'false');
+            document.body.classList.add('overflow-hidden');
+        }
+
+        function closeCryptoModal() {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            modal.setAttribute('aria-hidden', 'true');
+            document.body.classList.remove('overflow-hidden');
+        }
+
+        searchBar.addEventListener('input', function() {
+            const filter = this.value.toLowerCase();
             rows.forEach(row => {
                 const name = row.querySelector('.crypto-name').textContent.toLowerCase();
                 const symbol = row.querySelector('.crypto-symbol').textContent.toLowerCase();
@@ -95,6 +213,28 @@
                     row.style.display = 'none';
                 }
             });
+        });
+
+        rows.forEach(row => {
+            row.addEventListener('click', () => openCryptoModal(row));
+            row.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    openCryptoModal(row);
+                }
+            });
+        });
+
+        closeModalButton.addEventListener('click', closeCryptoModal);
+        modal.addEventListener('click', (event) => {
+            if (event.target === modal) {
+                closeCryptoModal();
+            }
+        });
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && !modal.classList.contains('hidden')) {
+                closeCryptoModal();
+            }
         });
     </script>
 </body>

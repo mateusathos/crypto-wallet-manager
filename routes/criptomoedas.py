@@ -27,10 +27,16 @@ def list_cryptos():
             {
                 "name": crypto.name,
                 "symbol": crypto.symbol,
+                "coingecko_id": crypto.coingecko_id,
                 "image_url": crypto.image_url,
                 "current_price_brl": brl_format(crypto.current_price),
                 "current_marketcap_brl": brl_format(crypto.current_marketcap),
                 "price_change_percentage_24h": change_24h,
+                "last_updated": (
+                    crypto.last_updated.strftime("%d/%m/%Y %H:%M:%S")
+                    if crypto.last_updated
+                    else "Não informado"
+                ),
             }
         )
 

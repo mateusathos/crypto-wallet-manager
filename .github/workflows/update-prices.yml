@@ -14,6 +14,15 @@ jobs:
           CRON_URL: ${{ secrets.CRON_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
+          set -euo pipefail
+          if [ -z "${CRON_URL:-}" ]; then
+            echo "CRON_URL secret is missing or empty." >&2
+            exit 1
+          fi
+          if [ -z "${CRON_SECRET:-}" ]; then
+            echo "CRON_SECRET secret is missing or empty." >&2
+            exit 1
+          fi
           status=$(curl -sS -o response.txt -w "%{http_code}" \
             -H "Authorization: Bearer ${CRON_SECRET}" \
             "${CRON_URL}")
