@@ -1,4 +1,5 @@
 import os
+import sqlite3
 from typing import Optional
 
 try:
@@ -56,6 +57,69 @@ def _connect_and_sync(local_db_path, turso_database_url, turso_auth_token, sync_
     return conn
 
 
+def _quote_identifier(identifier: str) -> str:
+    escaped = str(identifier).replace('"', '""')
+    return f'"{escaped}"'
+
+
+def _iter_sqlite_dump(local_db_path: str):
+    local_conn = sqlite3.connect(local_db_path)
+    try:
+        return list(local_conn.iterdump())
+    finally:
+        local_conn.close()
+
+
+def _list_local_tables(local_db_path: str):
+    local_conn = sqlite3.connect(local_db_path)
+    try:
+        rows = local_conn.execute(
+            """
+            SELECT name
+            FROM sqlite_master
+            WHERE type = 'table'
+              AND name NOT LIKE 'sqlite_%'
+            ORDER BY name
+            """
+        ).fetchall()
+        return [str(row[0]) for row in rows]
+    finally:
+        local_conn.close()
+
+
+def _push_local_snapshot(local_db_path: str, turso_database_url: str, turso_auth_token: str):
+    if libsql is None:
+        raise RuntimeError(
+            "Pacote 'libsql' não está instalado. Rode: pip install libsql"
+        )
+    if not os.path.exists(local_db_path):
+        raise RuntimeError(f"Banco local não encontrado para sync: {local_db_path}")
+
+    dump_lines = _iter_sqlite_dump(local_db_path)
+    table_names = _list_local_tables(local_db_path)
+    remote_conn = libsql.connect(turso_database_url, auth_token=turso_auth_token)
+    try:
+        remote_conn.execute("PRAGMA foreign_keys=OFF")
+        for table_name in reversed(table_names):
+            remote_conn.execute(f"DROP TABLE IF EXISTS {_quote_identifier(table_name)}")
+
+        for line in dump_lines:
+            stmt = line.strip()
+            if not stmt:
+                continue
+            if stmt in {"BEGIN TRANSACTION;", "COMMIT;"}:
+                continue
+            if stmt.startswith("CREATE TABLE sqlite_sequence"):
+                continue
+            if stmt.startswith("INSERT INTO \"sqlite_sequence\""):
+                continue
+            remote_conn.execute(stmt)
+
+        remote_conn.commit()
+    finally:
+        remote_conn.close()
+
+
 def init_turso_sync(app):
     if not app.config.get("TURSO_ENABLED", False):
         return None
@@ -105,4 +169,16 @@ def sync_now(app) -> bool:
             sync_interval_seconds=int(app.config.get("TURSO_SYNC_INTERVAL_SECONDS", 0)),
         )
         app.extensions["turso_sync_conn"] = conn
+    return True
+
+
+def push_snapshot_now(app) -> bool:
+    if not app.config.get("TURSO_ENABLED", False):
+        return False
+
+    _push_local_snapshot(
+        local_db_path=app.config["TURSO_LOCAL_DB_PATH"],
+        turso_database_url=app.config["TURSO_DATABASE_URL"],
+        turso_auth_token=app.config["TURSO_AUTH_TOKEN"],
+    )
     return True

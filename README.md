@@ -67,6 +67,11 @@ python app.py
 
 Aplicação disponível em `http://127.0.0.1:5000`.
 
+## Persistência no Turso
+
+- A aplicação sincroniza leitura do Turso no início das requisições.
+- Após operações de escrita (cadastro, portfólios, transações e cron de preços), publica automaticamente o snapshot local no Turso.
+
 ## Publicar snapshot para Turso
 
 1. Se você já usa `TURSO_LOCAL_DB_PATH` como snapshot local, execute:

@@ -9,7 +9,7 @@ from routes.criptomoedas import crypto_bp
 from routes.homepage import homepage_bp
 from routes.auth import auth_bp
 from routes.portfolio import portfolio_bp
-from services.turso_service import init_turso_sync, sync_now
+from services.turso_service import init_turso_sync, push_snapshot_now, sync_now
 import models  # MUITO IMPORTANTE
 
 
@@ -54,7 +54,7 @@ def create_app():
     @app.after_request
     def push_sync_after_write(response):
         if request.method in {"POST", "PUT", "PATCH", "DELETE"} and response.status_code < 500:
-            sync_now(app)
+            push_snapshot_now(app)
         return response
 
     @app.context_processor
