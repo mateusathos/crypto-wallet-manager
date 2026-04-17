@@ -9,7 +9,7 @@ from routes.criptomoedas import crypto_bp
 from routes.homepage import homepage_bp
 from routes.auth import auth_bp
 from routes.portfolio import portfolio_bp
-from services.turso_service import init_turso_sync, sync_now
+from services.turso_service import init_turso_sync, push_snapshot_now, sync_now
 import models  # MUITO IMPORTANTE
 
 
@@ -43,6 +43,16 @@ def create_app():
     app.register_blueprint(portfolio_bp)
     app.register_blueprint(cron_bp)
 
+    write_sync_tables_by_endpoint = {
+        "auth.cadastro": ["users"],
+        "portfolio.create_portfolio": ["portfolios"],
+        "portfolio.create_transaction": ["transactions"],
+        "portfolio.edit_transaction": ["transactions"],
+        "portfolio.delete_transaction": ["transactions"],
+        "portfolio.delete_asset": ["transactions"],
+        "portfolio.delete_portfolio": ["portfolios", "transactions"],
+    }
+
     @app.before_request
     def ensure_session_and_csrf():
         if request.method not in {"POST", "PUT", "PATCH", "DELETE"}:
@@ -55,7 +65,11 @@ def create_app():
     @app.after_request
     def push_sync_after_write(response):
         if request.method in {"POST", "PUT", "PATCH", "DELETE"} and response.status_code < 500:
-            sync_now(app)
+            tables = write_sync_tables_by_endpoint.get(request.endpoint)
+            if tables:
+                push_snapshot_now(app, table_names=tables)
+            else:
+                sync_now(app)
         return response
 
     @app.context_processor

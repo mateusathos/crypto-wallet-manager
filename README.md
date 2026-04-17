@@ -71,7 +71,10 @@ Aplicação disponível em `http://127.0.0.1:5000`.
 ## Persistência no Turso
 
 - A aplicação sincroniza leitura do Turso nas requisições de leitura.
-- Após operações de escrita (cadastro, portfólios, transações e cron de preços), faz sincronização incremental com o Turso.
+- Após operações de escrita, publica no Turso apenas as tabelas alteradas:
+  - cadastro: `users`
+  - portfólios/transações: `portfolios` e/ou `transactions`
+  - cron de preços: `cryptocurrencies`
 
 ## Publicar snapshot para Turso
 

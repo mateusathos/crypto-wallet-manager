@@ -13,8 +13,8 @@ class _FakeRemoteConnection:
         self.committed = False
         self.closed = False
 
-    def execute(self, statement):
-        self.statements.append(statement)
+    def execute(self, statement, params=None):
+        self.statements.append((statement, params))
         return self
 
     def commit(self):
@@ -52,14 +52,15 @@ class TursoServiceTests(unittest.TestCase):
                 )
 
             statements = fake_libsql.connection.statements
-            self.assertIn("PRAGMA foreign_keys=OFF", statements)
-            self.assertIn('DROP TABLE IF EXISTS "users"', statements)
+            executed_sql = [stmt for stmt, _ in statements]
+            self.assertIn("PRAGMA foreign_keys=OFF", executed_sql)
+            self.assertIn('DROP TABLE IF EXISTS "users"', executed_sql)
             self.assertTrue(
-                any(stmt.startswith("CREATE TABLE users") for stmt in statements),
+                any(stmt.startswith("CREATE TABLE users") for stmt in executed_sql),
                 "SQL dump should create users table on remote",
             )
             self.assertTrue(
-                any("INSERT INTO \"users\"" in stmt for stmt in statements),
+                any("INSERT INTO \"users\"" in stmt for stmt in executed_sql),
                 "SQL dump should insert users rows on remote",
             )
             self.assertTrue(fake_libsql.connection.committed)
@@ -77,6 +78,42 @@ class TursoServiceTests(unittest.TestCase):
                     turso_database_url="libsql://example.turso.io",
                     turso_auth_token="token",
                 )
+
+    def test_push_local_snapshot_can_sync_selected_tables(self):
+        fd, db_path = tempfile.mkstemp(suffix=".db")
+        os.close(fd)
+        try:
+            conn = sqlite3.connect(db_path)
+            conn.execute("CREATE TABLE users (id INTEGER PRIMARY KEY, email TEXT NOT NULL)")
+            conn.execute("CREATE TABLE portfolios (id INTEGER PRIMARY KEY, name TEXT NOT NULL)")
+            conn.execute("INSERT INTO users (email) VALUES ('alice@example.com')")
+            conn.execute("INSERT INTO portfolios (name) VALUES ('Main')")
+            conn.commit()
+            conn.close()
+
+            fake_libsql = _FakeLibsqlModule()
+            with patch("services.turso_service.libsql", fake_libsql):
+                _push_local_snapshot(
+                    local_db_path=db_path,
+                    turso_database_url="libsql://example.turso.io",
+                    turso_auth_token="token",
+                    table_names=["users"],
+                )
+
+            executed_sql = [stmt for stmt, _ in fake_libsql.connection.statements]
+            self.assertIn('DROP TABLE IF EXISTS "users"', executed_sql)
+            self.assertNotIn('DROP TABLE IF EXISTS "portfolios"', executed_sql)
+            self.assertTrue(
+                any(stmt.startswith("CREATE TABLE users") for stmt in executed_sql),
+                "Selected table should be recreated",
+            )
+            self.assertFalse(
+                any(stmt.startswith("CREATE TABLE portfolios") for stmt in executed_sql),
+                "Non-selected table should not be touched",
+            )
+        finally:
+            if os.path.exists(db_path):
+                os.remove(db_path)
 
 
 if __name__ == "__main__":

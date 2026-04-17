@@ -9,6 +9,9 @@ except ImportError:  # pragma: no cover - depends on environment
     libsql = None
 
 
+TABLE_SYNC_ORDER = ["users", "cryptocurrencies", "portfolios", "transactions"]
+
+
 def _is_invalid_local_state_error(exc: Exception) -> bool:
     message = str(exc).lower()
     return (
@@ -79,6 +82,13 @@ def _quote_identifier(identifier: str) -> str:
     return f'"{escaped}"'
 
 
+def _ordered_table_names(table_names) -> list[str]:
+    unique_names = {str(name) for name in (table_names or [])}
+    ordered = [name for name in TABLE_SYNC_ORDER if name in unique_names]
+    remaining = sorted(name for name in unique_names if name not in TABLE_SYNC_ORDER)
+    return ordered + remaining
+
+
 def _iter_sqlite_dump(local_db_path: str):
     local_conn = sqlite3.connect(local_db_path)
     try:
@@ -104,7 +114,48 @@ def _list_local_tables(local_db_path: str):
         local_conn.close()
 
 
-def _push_local_snapshot(local_db_path: str, turso_database_url: str, turso_auth_token: str):
+def _local_table_schema(local_conn: sqlite3.Connection, table_name: str) -> str:
+    row = local_conn.execute(
+        """
+        SELECT sql
+        FROM sqlite_master
+        WHERE type = 'table'
+          AND name = ?
+        """,
+        (table_name,),
+    ).fetchone()
+    if not row or not row[0]:
+        raise RuntimeError(f"Tabela local não encontrada para sync: {table_name}")
+    return str(row[0])
+
+
+def _replace_remote_table(local_conn, remote_conn, table_name: str):
+    schema_sql = _local_table_schema(local_conn, table_name)
+    quoted_table_name = _quote_identifier(table_name)
+    remote_conn.execute(f"DROP TABLE IF EXISTS {quoted_table_name}")
+    remote_conn.execute(schema_sql)
+
+    cursor = local_conn.execute(f"SELECT * FROM {quoted_table_name}")
+    columns = [str(col[0]) for col in (cursor.description or [])]
+    rows = cursor.fetchall()
+    if not rows:
+        return
+
+    columns_sql = ", ".join(_quote_identifier(column) for column in columns)
+    placeholders = ", ".join("?" for _ in columns)
+    insert_sql = (
+        f"INSERT INTO {quoted_table_name} ({columns_sql}) VALUES ({placeholders})"
+    )
+    for row in rows:
+        remote_conn.execute(insert_sql, tuple(row))
+
+
+def _push_local_snapshot(
+    local_db_path: str,
+    turso_database_url: str,
+    turso_auth_token: str,
+    table_names: list[str] | None = None,
+):
     if libsql is None:
         raise RuntimeError(
             "Pacote 'libsql' não está instalado. Rode: pip install libsql"
@@ -112,28 +163,23 @@ def _push_local_snapshot(local_db_path: str, turso_database_url: str, turso_auth
     if not os.path.exists(local_db_path):
         raise RuntimeError(f"Banco local não encontrado para sync: {local_db_path}")
 
-    dump_lines = _iter_sqlite_dump(local_db_path)
-    table_names = _list_local_tables(local_db_path)
+    tables_to_sync = _ordered_table_names(
+        table_names if table_names is not None else _list_local_tables(local_db_path)
+    )
+    if not tables_to_sync:
+        return
+
+    local_conn = sqlite3.connect(local_db_path)
     remote_conn = libsql.connect(turso_database_url, auth_token=turso_auth_token)
     try:
         remote_conn.execute("PRAGMA foreign_keys=OFF")
-        for table_name in reversed(table_names):
+        for table_name in reversed(tables_to_sync):
             remote_conn.execute(f"DROP TABLE IF EXISTS {_quote_identifier(table_name)}")
-
-        for line in dump_lines:
-            stmt = line.strip()
-            if not stmt:
-                continue
-            if stmt in {"BEGIN TRANSACTION;", "COMMIT;"}:
-                continue
-            if stmt.startswith("CREATE TABLE sqlite_sequence"):
-                continue
-            if stmt.startswith("INSERT INTO \"sqlite_sequence\""):
-                continue
-            remote_conn.execute(stmt)
-
+        for table_name in tables_to_sync:
+            _replace_remote_table(local_conn, remote_conn, table_name)
         remote_conn.commit()
     finally:
+        local_conn.close()
         remote_conn.close()
 
 
@@ -215,7 +261,7 @@ def sync_now(app) -> bool:
     return True
 
 
-def push_snapshot_now(app) -> bool:
+def push_snapshot_now(app, table_names: list[str] | None = None) -> bool:
     if not app.config.get("TURSO_ENABLED", False):
         return False
 
@@ -225,6 +271,7 @@ def push_snapshot_now(app) -> bool:
             local_db_path=app.config["TURSO_LOCAL_DB_PATH"],
             turso_database_url=app.config["TURSO_DATABASE_URL"],
             turso_auth_token=app.config["TURSO_AUTH_TOKEN"],
+            table_names=table_names,
         )
         conn: Optional[object] = app.extensions.get("turso_sync_conn")
         if conn is not None:
