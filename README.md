@@ -51,6 +51,7 @@ Use `.env` (base em `.env.example`):
 TURSO_DATABASE_URL=libsql://your-database.turso.io
 TURSO_AUTH_TOKEN=your_turso_token
 TURSO_LOCAL_DB_PATH=instance/app.db
+TURSO_SYNC_INTERVAL_SECONDS=0
 SECRET_KEY=replace_with_a_strong_random_secret
 CRON_SECRET=replace_with_a_strong_random_secret
 COINGECKO_API_KEY=
@@ -117,6 +118,7 @@ No painel da Vercel, configure as variáveis:
 - `TURSO_DATABASE_URL`
 - `TURSO_AUTH_TOKEN`
 - `TURSO_LOCAL_DB_PATH=/tmp/app.db`
+- `TURSO_SYNC_INTERVAL_SECONDS=0`
 - `CRON_SECRET`
 - `COINGECKO_API_KEY` (opcional)
 

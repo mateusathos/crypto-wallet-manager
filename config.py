@@ -55,7 +55,7 @@ def _resolve_database_settings():
         "turso_database_url": turso_database_url,
         "turso_auth_token": turso_auth_token,
         "turso_local_db_path": turso_local_db_path,
-        "turso_sync_interval_seconds": _get_int_env("TURSO_SYNC_INTERVAL_SECONDS", 30),
+        "turso_sync_interval_seconds": _get_int_env("TURSO_SYNC_INTERVAL_SECONDS", 0),
     }
 
 

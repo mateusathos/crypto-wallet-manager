@@ -1,5 +1,6 @@
 import os
 import sqlite3
+import threading
 from typing import Optional
 
 try:
@@ -15,6 +16,22 @@ def _is_invalid_local_state_error(exc: Exception) -> bool:
         or "metadata file does not" in message
         or "db file exists but metadata file does not" in message
     )
+
+
+def _is_wal_frame_conflict_error(exc: Exception) -> bool:
+    return "wal frame insert conflict" in str(exc).lower()
+
+
+def _is_recoverable_sync_error(exc: Exception) -> bool:
+    return _is_invalid_local_state_error(exc) or _is_wal_frame_conflict_error(exc)
+
+
+def _get_sync_lock(app):
+    lock = app.extensions.get("turso_sync_lock")
+    if lock is None:
+        lock = threading.RLock()
+        app.extensions["turso_sync_lock"] = lock
+    return lock
 
 
 def _build_sync_connection(
@@ -124,51 +141,77 @@ def init_turso_sync(app):
     if not app.config.get("TURSO_ENABLED", False):
         return None
 
-    local_db_path = app.config["TURSO_LOCAL_DB_PATH"]
-    sync_interval_seconds = int(app.config.get("TURSO_SYNC_INTERVAL_SECONDS", 0))
-    try:
-        conn = _connect_and_sync(
-            local_db_path=local_db_path,
-            turso_database_url=app.config["TURSO_DATABASE_URL"],
-            turso_auth_token=app.config["TURSO_AUTH_TOKEN"],
-            sync_interval_seconds=sync_interval_seconds,
-        )
-    except ValueError as exc:
-        if not _is_invalid_local_state_error(exc):
-            raise
-        _remove_sync_files(local_db_path)
-        conn = _connect_and_sync(
-            local_db_path=local_db_path,
-            turso_database_url=app.config["TURSO_DATABASE_URL"],
-            turso_auth_token=app.config["TURSO_AUTH_TOKEN"],
-            sync_interval_seconds=sync_interval_seconds,
-        )
-    app.extensions["turso_sync_conn"] = conn
-    return conn
+    lock = _get_sync_lock(app)
+    with lock:
+        conn: Optional[object] = app.extensions.get("turso_sync_conn")
+        if conn is not None:
+            return conn
+
+        local_db_path = app.config["TURSO_LOCAL_DB_PATH"]
+        sync_interval_seconds = int(app.config.get("TURSO_SYNC_INTERVAL_SECONDS", 0))
+        try:
+            conn = _connect_and_sync(
+                local_db_path=local_db_path,
+                turso_database_url=app.config["TURSO_DATABASE_URL"],
+                turso_auth_token=app.config["TURSO_AUTH_TOKEN"],
+                sync_interval_seconds=sync_interval_seconds,
+            )
+        except ValueError as exc:
+            if not _is_recoverable_sync_error(exc):
+                raise
+            _remove_sync_files(local_db_path)
+            conn = _connect_and_sync(
+                local_db_path=local_db_path,
+                turso_database_url=app.config["TURSO_DATABASE_URL"],
+                turso_auth_token=app.config["TURSO_AUTH_TOKEN"],
+                sync_interval_seconds=sync_interval_seconds,
+            )
+        app.extensions["turso_sync_conn"] = conn
+        return conn
 
 
 def sync_now(app) -> bool:
-    conn: Optional[object] = app.extensions.get("turso_sync_conn")
-    if conn is None:
+    if not app.config.get("TURSO_ENABLED", False):
         return False
-    try:
-        conn.sync()
-    except ValueError as exc:
-        if not _is_invalid_local_state_error(exc):
-            raise
+
+    lock = _get_sync_lock(app)
+    with lock:
+        conn: Optional[object] = app.extensions.get("turso_sync_conn")
+        if conn is None:
+            conn = init_turso_sync(app)
+            if conn is None:
+                return False
+
         try:
-            conn.close()
-        except Exception:
-            pass
-        local_db_path = app.config["TURSO_LOCAL_DB_PATH"]
-        _remove_sync_files(local_db_path)
-        conn = _connect_and_sync(
-            local_db_path=local_db_path,
-            turso_database_url=app.config["TURSO_DATABASE_URL"],
-            turso_auth_token=app.config["TURSO_AUTH_TOKEN"],
-            sync_interval_seconds=int(app.config.get("TURSO_SYNC_INTERVAL_SECONDS", 0)),
-        )
-        app.extensions["turso_sync_conn"] = conn
+            conn.sync()
+        except ValueError as exc:
+            if not _is_recoverable_sync_error(exc):
+                raise
+            try:
+                conn.close()
+            except Exception:
+                pass
+
+            local_db_path = app.config["TURSO_LOCAL_DB_PATH"]
+            sync_interval_seconds = int(app.config.get("TURSO_SYNC_INTERVAL_SECONDS", 0))
+            try:
+                conn = _connect_and_sync(
+                    local_db_path=local_db_path,
+                    turso_database_url=app.config["TURSO_DATABASE_URL"],
+                    turso_auth_token=app.config["TURSO_AUTH_TOKEN"],
+                    sync_interval_seconds=sync_interval_seconds,
+                )
+            except ValueError as reconnect_exc:
+                if not _is_recoverable_sync_error(reconnect_exc):
+                    raise
+                _remove_sync_files(local_db_path)
+                conn = _connect_and_sync(
+                    local_db_path=local_db_path,
+                    turso_database_url=app.config["TURSO_DATABASE_URL"],
+                    turso_auth_token=app.config["TURSO_AUTH_TOKEN"],
+                    sync_interval_seconds=sync_interval_seconds,
+                )
+            app.extensions["turso_sync_conn"] = conn
     return True
 
 
@@ -176,9 +219,18 @@ def push_snapshot_now(app) -> bool:
     if not app.config.get("TURSO_ENABLED", False):
         return False
 
-    _push_local_snapshot(
-        local_db_path=app.config["TURSO_LOCAL_DB_PATH"],
-        turso_database_url=app.config["TURSO_DATABASE_URL"],
-        turso_auth_token=app.config["TURSO_AUTH_TOKEN"],
-    )
+    lock = _get_sync_lock(app)
+    with lock:
+        _push_local_snapshot(
+            local_db_path=app.config["TURSO_LOCAL_DB_PATH"],
+            turso_database_url=app.config["TURSO_DATABASE_URL"],
+            turso_auth_token=app.config["TURSO_AUTH_TOKEN"],
+        )
+        conn: Optional[object] = app.extensions.get("turso_sync_conn")
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
+            app.extensions["turso_sync_conn"] = None
     return True
