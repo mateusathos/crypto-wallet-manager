@@ -39,7 +39,7 @@
 <body class="bg-slate-950 text-slate-100 min-h-screen">
     {% include "partials/header.html" %}
 
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         <!-- Flash Messages -->
         <div class="max-w-2xl mx-auto space-y-2" id="flash-container">
             {% with messages = get_flashed_messages(with_categories=true) %}
@@ -61,7 +61,7 @@
                 <p class="text-slate-300 max-w-2xl mx-auto">Acompanhe e gerencie seus investimentos em um só lugar.</p>
             </section>
             <section class="max-w-2xl mx-auto">
-                <div class="rounded-xl border border-slate-800 bg-slate-900/40 p-8 text-center">
+                <div class="rounded-xl border border-slate-800 bg-slate-900/40 p-5 sm:p-8 text-center">
                     <div class="mx-auto mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-slate-800 text-indigo-400">₿</div>
                     <h2 class="text-xl font-semibold text-white">Crie seu primeiro portfólio</h2>
                     <p class="mt-2 text-slate-300">Organize suas criptomoedas por objetivos e acompanhe a evolução do seu patrimônio.</p>
@@ -73,16 +73,16 @@
             </section>
         {% else %}
             <!-- Barra de ações -->
-            <div class="mb-6 flex gap-3 justify-end">
+            <div class="mb-6 flex gap-3 justify-start sm:justify-end">
                 <button type="button" data-open-new-portfolio class="cursor-pointer inline-flex items-center rounded-md bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 text-sm font-medium shadow-sm transition-colors">Criar Portfólio</button>
             </div>
 
-            <div class="flex h-full gap-3">
+            <div class="flex h-full flex-col gap-4 lg:flex-row">
                 <!-- Lista de portfólios -->
-                <section class="flex min-w-52 flex-col gap-2">
+                <section class="w-full lg:w-72 lg:min-w-72 flex flex-col gap-2">
                     <h1 class="text-lg font-semibold">Meus Portfolios ({{ portfolios | length }})</h1>
                     {% for portfolio in portfolios %}
-                        <button type="button" class="cursor-pointer text-left w-full rounded-xl border border-slate-800 bg-slate-900/40 py-4 px-6 hover:bg-slate-800/50 transition-colors"
+                        <button type="button" class="cursor-pointer text-left w-full rounded-xl border border-slate-800 bg-slate-900/40 py-3 px-4 sm:px-6 hover:bg-slate-800/50 transition-colors"
                             data-portfolio-id="{{ portfolio.id }}" 
                             data-portfolio-name="{{ portfolio.name }}"
                             data-portfolio-cost="{{ portfolio.cost }}" 
@@ -104,22 +104,22 @@
     
                 <!-- Detalhes do portfólio selecionado -->
                 <section id="selected-portfolio" class="hidden w-full h-full">
-                    <div class="rounded-xl border border-slate-800 bg-slate-900/40 p-6">
-                        <div class="flex items-start justify-between">
+                    <div class="rounded-xl border border-slate-800 bg-slate-900/40 p-4 sm:p-6">
+                        <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                             <div>
                                 <h3 id="sp-name" class="text-xl font-semibold text-white"></h3>
                                 <p id="sp-id" class="text-slate-400 text-sm"></p>
-                                <p id="sp-value" class="text-slate-200 font-semibold text-3xl">—</p>
+                                <p id="sp-value" class="text-slate-200 font-semibold text-2xl sm:text-3xl">—</p>
                             </div>
 
-                            <div class="flex gap-3">
+                            <div class="flex flex-wrap gap-2 sm:gap-3">
                                 <button type="button" data-open-new-transaction class="cursor-pointer inline-flex items-center rounded-md bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 text-sm font-medium shadow-sm transition-colors">Adicionar transação</button>
                                 <button type="button" id="sp-delete-portfolio" aria-label="Excluir portfólio" class="cursor-pointer inline-flex items-center rounded-md bg-red-600 hover:bg-red-500 text-white p-2 text-base font-medium shadow-sm transition-colors">🗑️</button>
                                 <button type="button" id="sp-close" class="cursor-pointer text-slate-400 hover:text-slate-200" aria-label="Fechar">✕</button>
                             </div>
                         </div>
     
-                        <div class="flex gap-6 mt-5">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-5">
                             <div class="bg-slate-900 px-5 py-3 rounded-xl">
                                 <p class="text-slate-400 text-base">Lucro total</p>
                                 <div class="flex flex-col font-semibold" id="profit-info">
@@ -136,7 +136,7 @@
 
                         <div id="portfolio-actives" class="mt-10 overflow-x-auto">
                             <h1 class="font-semibold text-xl mb-4">Ativos</h1>
-                            <table class="min-w-full hidden" id="active-card">
+                            <table class="hidden min-w-[920px] w-full" id="active-card">
                                 <thead class="border-t border-t-slate-800">
                                     <tr class="text-left text-xs">
                                         <th class="px-4 py-3">Nome</th>
@@ -191,7 +191,7 @@
 
                         <div id="portfolio-transactions" class="mt-10 overflow-x-auto">
                             <h1 class="font-semibold text-xl mb-4">Transações</h1>
-                            <table class="min-w-full hidden" id="txn-card">
+                            <table class="hidden min-w-[760px] w-full" id="txn-card">
                                 <thead class="border-t border-t-slate-800">
                                     <tr class="text-left text-xs">
                                         <th class="px-4 py-3">Data</th>
@@ -262,9 +262,9 @@
                                placeholder="Ex.: Longo prazo">
                     </div>
 
-                    <div class="flex items-center justify-end gap-3">
-                        <button type="button" class="cursor-pointer inline-flex items-center rounded-md bg-slate-800 hover:bg-slate-700 text-slate-100 px-3 py-2 text-sm font-medium border border-slate-700 transition-colors" data-close-new-portfolio>Cancelar</button>
-                        <button type="submit" class="cursor-pointer inline-flex items-center rounded-md bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 text-sm font-medium shadow-sm transition-colors">Criar</button>
+                    <div class="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-3">
+                        <button type="button" class="w-full sm:w-auto cursor-pointer inline-flex items-center justify-center rounded-md bg-slate-800 hover:bg-slate-700 text-slate-100 px-3 py-2 text-sm font-medium border border-slate-700 transition-colors" data-close-new-portfolio>Cancelar</button>
+                        <button type="submit" class="w-full sm:w-auto cursor-pointer inline-flex items-center justify-center rounded-md bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 text-sm font-medium shadow-sm transition-colors">Criar</button>
                     </div>
                 </form>
             </div>
@@ -337,9 +337,9 @@
                         <p id="value-spent" class="text-xl"></p>
                     </div>
 
-                    <div class="flex items-center justify-end gap-3">
-                        <button type="button" class="cursor-pointer inline-flex items-center rounded-md bg-slate-800 hover:bg-slate-700 text-slate-100 px-3 py-2 text-sm font-medium border border-slate-700 transition-colors" data-close-new-transaction>Cancelar</button>
-                        <button type="submit" class="cursor-pointer inline-flex items-center rounded-md bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 text-sm font-medium shadow-sm transition-colors">Adicionar</button>
+                    <div class="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-3">
+                        <button type="button" class="w-full sm:w-auto cursor-pointer inline-flex items-center justify-center rounded-md bg-slate-800 hover:bg-slate-700 text-slate-100 px-3 py-2 text-sm font-medium border border-slate-700 transition-colors" data-close-new-transaction>Cancelar</button>
+                        <button type="submit" class="w-full sm:w-auto cursor-pointer inline-flex items-center justify-center rounded-md bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 text-sm font-medium shadow-sm transition-colors">Adicionar</button>
                     </div>
                 </form>
             </div>
@@ -382,9 +382,9 @@
                                class="w-full rounded-md bg-slate-900 border border-slate-700 text-slate-100 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
                     </div>
                     
-                    <div class="flex items-center justify-end gap-3">
-                        <button type="button" class="cursor-pointer inline-flex items-center rounded-md bg-slate-800 hover:bg-slate-700 text-slate-100 px-3 py-2 text-sm font-medium border border-slate-700 transition-colors" data-close-edit-transaction>Cancelar</button>
-                        <button type="button" id="confirm-edit" class="cursor-pointer inline-flex items-center rounded-md bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 text-sm font-medium shadow-sm transition-colors">Editar</button>
+                    <div class="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-3">
+                        <button type="button" class="w-full sm:w-auto cursor-pointer inline-flex items-center justify-center rounded-md bg-slate-800 hover:bg-slate-700 text-slate-100 px-3 py-2 text-sm font-medium border border-slate-700 transition-colors" data-close-edit-transaction>Cancelar</button>
+                        <button type="button" id="confirm-edit" class="w-full sm:w-auto cursor-pointer inline-flex items-center justify-center rounded-md bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 text-sm font-medium shadow-sm transition-colors">Editar</button>
                     </div>
                 </form>
             </div>
