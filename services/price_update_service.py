@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from extensions import db
 from models import Cryptocurrency
@@ -17,7 +17,7 @@ def _parse_last_updated(raw_value):
     except ValueError:
         return None
     if parsed.tzinfo is not None:
-        return parsed.replace(tzinfo=None)
+        return parsed.astimezone(timezone.utc).replace(tzinfo=None)
     return parsed
 
 

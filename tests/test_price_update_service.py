@@ -14,6 +14,12 @@ class PriceUpdateServiceTests(unittest.TestCase):
         parsed = _parse_last_updated("not-a-date")
         self.assertIsNone(parsed)
 
+    def test_parse_last_updated_with_offset_normalizes_to_utc(self):
+        parsed = _parse_last_updated("2026-04-16T12:34:56+02:00")
+        self.assertIsNotNone(parsed)
+        self.assertEqual(parsed.hour, 10)
+        self.assertEqual(parsed.minute, 34)
+
 
 if __name__ == "__main__":
     unittest.main()
