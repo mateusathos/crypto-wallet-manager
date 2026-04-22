@@ -4,6 +4,8 @@ Aplicação Flask para gestão de portfólio de criptomoedas, com autenticação
 
 O projeto está preparado para usar **Turso (libSQL)** e para deploy na **Vercel**, com atualização automática de preços via agendamento externo.
 
+Link da aplicação: https://athos-crypto-wallet-manager.vercel.app/
+
 ## Funcionalidades
 
 - Cadastro/login de usuários
