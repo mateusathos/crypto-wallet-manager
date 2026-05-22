@@ -9,12 +9,17 @@ from routes.criptomoedas import crypto_bp
 from routes.homepage import homepage_bp
 from routes.auth import auth_bp
 from routes.portfolio import portfolio_bp
+from routes.api_auth import api_auth_bp
+from routes.api_cryptocurrencies import api_cryptocurrencies_bp
 from services.turso_service import init_turso_sync, push_snapshot_now, sync_now
 import models  # MUITO IMPORTANTE
 
 
 def _validate_csrf():
     if request.method not in {"POST", "PUT", "PATCH", "DELETE"}:
+        return
+    
+    if request.path.startswith("/api/"):
         return
 
     expected = session.get("csrf_token")
@@ -42,6 +47,8 @@ def create_app():
     app.register_blueprint(auth_bp)
     app.register_blueprint(portfolio_bp)
     app.register_blueprint(cron_bp)
+    app.register_blueprint(api_auth_bp)
+    app.register_blueprint(api_cryptocurrencies_bp)
 
     write_sync_tables_by_endpoint = {
         "auth.cadastro": ["users"],
