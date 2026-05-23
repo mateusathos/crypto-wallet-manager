@@ -1,65 +1,251 @@
 # Crypto Portfolio Manager
 
-Aplicação Flask para gestão de portfólio de criptomoedas, com autenticação, controle de transações (compra/venda), cálculo de performance e atualização de preços via CoinGecko.
+Aplicação web para gestão de portfólio de criptomoedas, com autenticação, controle de compras e vendas, cálculo de performance e atualização de preços via CoinGecko.
 
-O projeto está preparado para usar **Turso (libSQL)** e para deploy na **Vercel**, com atualização automática de preços via agendamento externo.
+O projeto também expõe uma API JSON para consumo por uma versão mobile em Flutter.
 
 Link da aplicação: https://athos-crypto-wallet-manager.vercel.app/
 
+## Visão geral
+
+O Crypto Portfolio Manager permite que usuários acompanhem suas carteiras de criptoativos de forma organizada. A aplicação calcula custo médio, valor atual, lucro/prejuízo realizado e não realizado, além de consolidar transações por portfólio.
+
+O sistema foi pensado em duas interfaces sobre a mesma base de domínio:
+
+- uma versão web renderizada com Flask/Jinja;
+- uma API JSON usada pela versão mobile.
+
 ## Funcionalidades
 
-- Cadastro/login de usuários
-- Criação e gestão de múltiplos portfólios
-- Registro, edição e exclusão de transações
-- Cálculo de:
-  - valor atual
-  - custo médio (média ponderada)
-  - lucro/prejuízo realizado e não realizado
-  - lucro percentual
-- Listagem de criptomoedas com dados de mercado
-- Endpoint de cron para atualização automática de preços
+- Cadastro e login de usuários
+- Criação, edição e exclusão de múltiplos portfólios
+- Registro, edição e exclusão de transações de compra e venda
+- Cálculo de custo médio por ativo
+- Cálculo de lucro/prejuízo realizado e não realizado
+- Cálculo de rentabilidade percentual do portfólio
+- Listagem de criptomoedas com preço, market cap, variação 24h e imagem
+- Atualização de preços integrada à CoinGecko
+- API JSON para integração com app mobile
 
 ## Stack
 
-- Python + Flask
-- Flask-SQLAlchemy + Flask-Migrate
+- Python
+- Flask
+- Flask-SQLAlchemy
+- Flask-Migrate
 - Turso/libSQL
 - CoinGecko API
-- Jinja2 + Tailwind
+- Jinja2
+- Tailwind CSS
+- Vercel
+- unittest
 
-## Estrutura do projeto
+## Arquitetura
 
-- `app.py`: inicialização da aplicação e registro de blueprints
-- `config.py`: configuração por variáveis de ambiente
-- `models.py`: modelos do banco
-- `routes/`: rotas HTTP (`auth`, `portfolio`, `criptomoedas`, `cron`)
-- `services/`: lógica de domínio e integrações (`coingecko`, `price_update`, `portfolio`, `turso`)
-- `migrate_to_turso.py`: publicação de snapshot SQLite para o Turso
-- `sync_turso.py`: reenvio manual do snapshot local para o Turso
-- `vercel.json`: configuração de runtime na Vercel
-- `api/index.py`: entrypoint serverless para Vercel
-- `.github/workflows/update-prices.yml`: agendamento a cada 3 horas via GitHub Actions
+O backend concentra as regras de negócio e expõe duas superfícies:
 
-## Pré-requisitos
+- rotas HTML para a aplicação web;
+- rotas `/api/...` em JSON para o app mobile.
+
+Essa divisão permite reaproveitar as mesmas regras de cálculo entre web e mobile, evitando duplicação de lógica no Flutter.
+
+Estrutura principal:
+
+```text
+api/
+  index.py              # entrypoint serverless para Vercel
+
+routes/
+  auth.py               # autenticação web
+  portfolio.py          # portfólios/transações web
+  criptomoedas.py       # listagem web de criptomoedas
+  cron.py               # atualização de preços
+  api_auth.py           # autenticação JSON
+  api_cryptocurrencies.py
+  api_portfolios.py
+  api_helpers.py
+
+services/
+  portfolio_service.py  # cálculos de carteira
+  coingecko_service.py  # integração com preços
+  price_update_service.py
+  turso_service.py
+
+models.py              # modelos SQLAlchemy
+app.py                 # criação da aplicação Flask
+config.py              # configuração por ambiente
+tests/                 # testes automatizados
+```
+
+## Decisões técnicas
+
+- O banco usa Turso/libSQL, mantendo compatibilidade com SQLite no fluxo local.
+- O backend mantém a responsabilidade sobre regras sensíveis, como autenticação, ownership de portfólios e validação de venda maior que a quantidade disponível.
+- A API mobile não acessa o banco diretamente; o fluxo correto é `Flutter -> Flask API -> Turso`.
+- Os cálculos de portfólio ficam em `services/portfolio_service.py`, separados das rotas, para facilitar testes e reuso.
+- A sincronização com Turso pode ser desativada em desenvolvimento com `TURSO_PUSH_AFTER_WRITE=false`, evitando lentidão em cada escrita local.
+- O deploy web usa Vercel com entrypoint serverless em `api/index.py`.
+
+## API mobile
+
+Base local:
+
+```text
+http://127.0.0.1:5000
+```
+
+As rotas autenticadas usam sessão/cookie do Flask. Em clientes como Postman, Insomnia ou Thunder Client, faça login primeiro e mantenha os cookies habilitados nas próximas requisições.
+
+Use:
+
+```http
+Content-Type: application/json
+```
+
+### Autenticação
+
+```http
+POST /api/auth/register
+POST /api/auth/login
+POST /api/auth/logout
+GET  /api/auth/me
+```
+
+Exemplo de login:
+
+```json
+{
+  "email": "teste@example.com",
+  "password": "123456"
+}
+```
+
+Resposta:
+
+```json
+{
+  "user": {
+    "id": 1,
+    "email": "teste@example.com"
+  }
+}
+```
+
+### Criptomoedas
+
+```http
+GET /api/cryptocurrencies
+```
+
+Resposta resumida:
+
+```json
+{
+  "cryptocurrencies": [
+    {
+      "id": 1,
+      "name": "Bitcoin",
+      "symbol": "BTC",
+      "coingecko_id": "bitcoin",
+      "image_url": "https://...",
+      "current_price": 350000.0,
+      "current_marketcap": 6900000000000.0,
+      "price_change_percentage_24h": 1.25,
+      "last_updated": "2026-05-23T13:30:00",
+      "last_updated_formatted": "23/05/2026 10:30:00"
+    }
+  ]
+}
+```
+
+### Portfólios
+
+```http
+GET    /api/portfolios
+POST   /api/portfolios
+PATCH  /api/portfolios/<portfolio_id>
+DELETE /api/portfolios/<portfolio_id>
+```
+
+Criar portfólio:
+
+```json
+{
+  "name": "Carteira Principal"
+}
+```
+
+Resposta resumida:
+
+```json
+{
+  "portfolio": {
+    "id": 1,
+    "name": "Carteira Principal",
+    "summary": {
+      "actives": [],
+      "cost": 0.0,
+      "value": 0.0,
+      "unrealized_profit": 0.0,
+      "realized_profit": 0.0,
+      "profit_total": 0.0,
+      "profit_percentage": 0.0,
+      "invested_base": 0.0
+    },
+    "transactions": []
+  }
+}
+```
+
+### Transações
+
+```http
+POST   /api/portfolios/transactions
+PATCH  /api/portfolios/transactions/<transaction_id>
+DELETE /api/portfolios/transactions/<transaction_id>
+```
+
+Criar transação:
+
+```json
+{
+  "portfolio_id": 1,
+  "cryptocurrency_id": 1,
+  "type": "compra",
+  "quantity": 0.05,
+  "price": 350000,
+  "date": "2026-05-23"
+}
+```
+
+`type` aceita:
+
+- `compra`
+- `venda`
+
+Para vendas, a API valida se há quantidade disponível do ativo no portfólio.
+
+## Rodar localmente
+
+Pré-requisitos:
 
 - Python 3.10+
-- Conta/banco no Turso
+- Banco configurado no Turso
 
-## Variáveis de ambiente
-
-Use `.env` (base em `.env.example`):
+Crie um `.env` com base em `.env.example`:
 
 ```env
 TURSO_DATABASE_URL=libsql://your-database.turso.io
 TURSO_AUTH_TOKEN=your_turso_token
 TURSO_LOCAL_DB_PATH=instance/app.db
 TURSO_SYNC_INTERVAL_SECONDS=0
+TURSO_PUSH_AFTER_WRITE=false
 SECRET_KEY=replace_with_a_strong_random_secret
 CRON_SECRET=replace_with_a_strong_random_secret
 COINGECKO_API_KEY=
 ```
 
-## Rodar localmente
+Instale as dependências e execute:
 
 ```bash
 python -m venv .venv
@@ -68,82 +254,40 @@ pip install -r requirements.txt
 python app.py
 ```
 
-Aplicação disponível em `http://127.0.0.1:5000`.
+Aplicação local:
 
-## Persistência no Turso
-
-- A aplicação sincroniza leitura do Turso nas requisições de leitura.
-- Após operações de escrita, publica no Turso apenas as tabelas alteradas:
-  - cadastro: `users`
-  - portfólios/transações: `portfolios` e/ou `transactions`
-  - cron de preços: `cryptocurrencies`
-
-## Publicar snapshot para Turso
-
-1. Se você já usa `TURSO_LOCAL_DB_PATH` como snapshot local, execute:
-
-```bash
-python migrate_to_turso.py
+```text
+http://127.0.0.1:5000
 ```
 
-2. Se quiser publicar a partir de outro arquivo SQLite:
+## Atualização de preços
 
-```bash
-python migrate_to_turso.py --from-sqlite C:\caminho\seu_arquivo.db
+A atualização de preços é feita por endpoint protegido:
+
+```http
+GET /api/cron/update-prices
 ```
 
-3. Alinhe estado de migração local (caso tenha recriado o snapshot):
-
-```bash
-flask db stamp head
-flask db upgrade
-```
-
-## Atualização de preços (cron)
-
-Endpoint:
-
-- `GET /api/cron/update-prices`
-
-Com `CRON_SECRET` configurado, envie:
+Quando `CRON_SECRET` está configurado, envie:
 
 ```http
 Authorization: Bearer <CRON_SECRET>
 ```
 
-## Deploy na Vercel
-
-O projeto já está preparado para Vercel com:
-
-- entrypoint serverless em `api/index.py`
-
-No painel da Vercel, configure as variáveis:
-
-- `SECRET_KEY`
-- `TURSO_DATABASE_URL`
-- `TURSO_AUTH_TOKEN`
-- `TURSO_LOCAL_DB_PATH=/tmp/app.db`
-- `TURSO_SYNC_INTERVAL_SECONDS=0`
-- `CRON_SECRET`
-- `COINGECKO_API_KEY` (opcional)
-
-## Agendamento a cada 3 horas (Hobby-friendly)
-
-Para plano Hobby da Vercel, use o workflow já incluído em:
-
-- `.github/workflows/update-prices.yml`
-
-Ele chama:
-
-- `GET /api/cron/update-prices`
-
-Configure estes **Repository Secrets** no GitHub:
-
-- `CRON_URL` (ex.: `https://seu-dominio.vercel.app/api/cron/update-prices`)
-- `CRON_SECRET` (mesmo valor configurado na Vercel)
+Esse endpoint atualiza os dados das criptomoedas via CoinGecko e sincroniza a tabela `cryptocurrencies`.
 
 ## Testes
 
 ```bash
 python -m unittest discover -s tests
 ```
+
+Os testes cobrem regras de cálculo do portfólio, parsing de datas da CoinGecko e rotinas de sincronização com Turso.
+
+## Próximos passos
+
+- Evoluir a autenticação mobile de sessão/cookie para token próprio
+- Adicionar testes automatizados para as rotas `/api/...`
+- Melhorar resposta detalhada de edição de portfólio
+- Implementar paginação/filtros para histórico de transações
+- Finalizar a integração com o app Flutter

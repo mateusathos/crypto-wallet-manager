@@ -11,6 +11,7 @@ from routes.auth import auth_bp
 from routes.portfolio import portfolio_bp
 from routes.api_auth import api_auth_bp
 from routes.api_cryptocurrencies import api_cryptocurrencies_bp
+from routes.api_portfolios import api_portfolios_bp
 from services.turso_service import init_turso_sync, push_snapshot_now, sync_now
 import models  # MUITO IMPORTANTE
 
@@ -49,6 +50,7 @@ def create_app():
     app.register_blueprint(cron_bp)
     app.register_blueprint(api_auth_bp)
     app.register_blueprint(api_cryptocurrencies_bp)
+    app.register_blueprint(api_portfolios_bp)
 
     write_sync_tables_by_endpoint = {
         "auth.cadastro": ["users"],
@@ -58,6 +60,13 @@ def create_app():
         "portfolio.delete_transaction": ["transactions"],
         "portfolio.delete_asset": ["transactions"],
         "portfolio.delete_portfolio": ["portfolios", "transactions"],
+        "api_auth.register": ["users"],
+        "api_portfolios.create_portfolio": ["portfolios"],
+        "api_portfolios.create_transaction": ["transactions"],
+        "api_portfolios.delete_transaction": ["transactions"],
+        "api_portfolios.update_transaction": ["transactions"],
+        "api_portfolios.delete_portfolio": ["portfolios", "transactions"],
+        "api_portfolios.update_portfolio": ["portfolios"],
     }
 
     @app.before_request
@@ -71,6 +80,9 @@ def create_app():
 
     @app.after_request
     def push_sync_after_write(response):
+        if not app.config.get("TURSO_PUSH_AFTER_WRITE", True):
+            return response
+        
         if request.method in {"POST", "PUT", "PATCH", "DELETE"} and response.status_code < 500:
             tables = write_sync_tables_by_endpoint.get(request.endpoint)
             if tables:

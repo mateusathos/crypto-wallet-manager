@@ -89,3 +89,5 @@ class Config:
     PERMANENT_SESSION_LIFETIME = timedelta(
         hours=_get_int_env("SESSION_LIFETIME_HOURS", 12)
     )
+
+    TURSO_PUSH_AFTER_WRITE = _get_bool_env("TURSO_PUSH_AFTER_WRITE", True)
