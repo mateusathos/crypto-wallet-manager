@@ -150,6 +150,50 @@ def _replace_remote_table(local_conn, remote_conn, table_name: str):
         remote_conn.execute(insert_sql, tuple(row))
 
 
+def _primary_key_columns(local_conn: sqlite3.Connection, table_name: str) -> list[str]:
+    quoted_table_name = _quote_identifier(table_name)
+    rows = local_conn.execute(f"PRAGMA table_info({quoted_table_name})").fetchall()
+    pk_rows = sorted(
+        ((int(row[5]), str(row[1])) for row in rows if int(row[5] or 0) > 0),
+        key=lambda item: item[0],
+    )
+    return [name for _position, name in pk_rows]
+
+
+def _upsert_remote_table(local_conn, remote_conn, table_name: str):
+    quoted_table_name = _quote_identifier(table_name)
+    cursor = local_conn.execute(f"SELECT * FROM {quoted_table_name}")
+    columns = [str(col[0]) for col in (cursor.description or [])]
+    rows = cursor.fetchall()
+    if not rows:
+        return
+
+    pk_columns = _primary_key_columns(local_conn, table_name)
+    if not pk_columns:
+        raise RuntimeError(f"Tabela sem chave primária para upsert: {table_name}")
+
+    columns_sql = ", ".join(_quote_identifier(column) for column in columns)
+    placeholders = ", ".join("?" for _column in columns)
+    conflict_columns = ", ".join(_quote_identifier(column) for column in pk_columns)
+    update_columns = [column for column in columns if column not in set(pk_columns)]
+
+    if update_columns:
+        update_sql = ", ".join(
+            f"{_quote_identifier(column)} = excluded.{_quote_identifier(column)}"
+            for column in update_columns
+        )
+        conflict_action = f"DO UPDATE SET {update_sql}"
+    else:
+        conflict_action = "DO NOTHING"
+
+    insert_sql = (
+        f"INSERT INTO {quoted_table_name} ({columns_sql}) VALUES ({placeholders}) "
+        f"ON CONFLICT({conflict_columns}) {conflict_action}"
+    )
+    for row in rows:
+        remote_conn.execute(insert_sql, tuple(row))
+
+
 def _push_local_snapshot(
     local_db_path: str,
     turso_database_url: str,
@@ -177,6 +221,34 @@ def _push_local_snapshot(
             remote_conn.execute(f"DROP TABLE IF EXISTS {_quote_identifier(table_name)}")
         for table_name in tables_to_sync:
             _replace_remote_table(local_conn, remote_conn, table_name)
+        remote_conn.commit()
+    finally:
+        local_conn.close()
+        remote_conn.close()
+
+
+def _upsert_local_snapshot(
+    local_db_path: str,
+    turso_database_url: str,
+    turso_auth_token: str,
+    table_names: list[str],
+):
+    if libsql is None:
+        raise RuntimeError(
+            "Pacote 'libsql' não está instalado. Rode: pip install libsql"
+        )
+    if not os.path.exists(local_db_path):
+        raise RuntimeError(f"Banco local não encontrado para sync: {local_db_path}")
+
+    tables_to_sync = _ordered_table_names(table_names)
+    if not tables_to_sync:
+        return
+
+    local_conn = sqlite3.connect(local_db_path)
+    remote_conn = libsql.connect(turso_database_url, auth_token=turso_auth_token)
+    try:
+        for table_name in tables_to_sync:
+            _upsert_remote_table(local_conn, remote_conn, table_name)
         remote_conn.commit()
     finally:
         local_conn.close()
@@ -268,6 +340,28 @@ def push_snapshot_now(app, table_names: list[str] | None = None) -> bool:
     lock = _get_sync_lock(app)
     with lock:
         _push_local_snapshot(
+            local_db_path=app.config["TURSO_LOCAL_DB_PATH"],
+            turso_database_url=app.config["TURSO_DATABASE_URL"],
+            turso_auth_token=app.config["TURSO_AUTH_TOKEN"],
+            table_names=table_names,
+        )
+        conn: Optional[object] = app.extensions.get("turso_sync_conn")
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
+            app.extensions["turso_sync_conn"] = None
+    return True
+
+
+def upsert_snapshot_now(app, table_names: list[str]) -> bool:
+    if not app.config.get("TURSO_ENABLED", False):
+        return False
+
+    lock = _get_sync_lock(app)
+    with lock:
+        _upsert_local_snapshot(
             local_db_path=app.config["TURSO_LOCAL_DB_PATH"],
             turso_database_url=app.config["TURSO_DATABASE_URL"],
             turso_auth_token=app.config["TURSO_AUTH_TOKEN"],

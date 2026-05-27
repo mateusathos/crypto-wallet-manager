@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from services.turso_service import _push_local_snapshot
+from services.turso_service import _push_local_snapshot, _upsert_local_snapshot
 
 
 class _FakeRemoteConnection:
@@ -111,6 +111,55 @@ class TursoServiceTests(unittest.TestCase):
                 any(stmt.startswith("CREATE TABLE portfolios") for stmt in executed_sql),
                 "Non-selected table should not be touched",
             )
+        finally:
+            if os.path.exists(db_path):
+                os.remove(db_path)
+
+    def test_upsert_local_snapshot_updates_selected_table_without_recreating_it(self):
+        fd, db_path = tempfile.mkstemp(suffix=".db")
+        os.close(fd)
+        try:
+            conn = sqlite3.connect(db_path)
+            conn.execute(
+                """
+                CREATE TABLE cryptocurrencies (
+                    id INTEGER PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    current_price NUMERIC
+                )
+                """
+            )
+            conn.execute(
+                "INSERT INTO cryptocurrencies (id, name, current_price) VALUES (1, 'Bitcoin', 100)"
+            )
+            conn.commit()
+            conn.close()
+
+            fake_libsql = _FakeLibsqlModule()
+            with patch("services.turso_service.libsql", fake_libsql):
+                _upsert_local_snapshot(
+                    local_db_path=db_path,
+                    turso_database_url="libsql://example.turso.io",
+                    turso_auth_token="token",
+                    table_names=["cryptocurrencies"],
+                )
+
+            executed_sql = [stmt for stmt, _ in fake_libsql.connection.statements]
+            self.assertNotIn('DROP TABLE IF EXISTS "cryptocurrencies"', executed_sql)
+            self.assertFalse(
+                any(stmt.startswith("CREATE TABLE cryptocurrencies") for stmt in executed_sql),
+                "Upsert should not recreate the remote table",
+            )
+            self.assertTrue(
+                any(
+                    'INSERT INTO "cryptocurrencies"' in stmt
+                    and 'ON CONFLICT("id") DO UPDATE' in stmt
+                    for stmt in executed_sql
+                ),
+                "Selected rows should be upserted into Turso",
+            )
+            self.assertTrue(fake_libsql.connection.committed)
+            self.assertTrue(fake_libsql.connection.closed)
         finally:
             if os.path.exists(db_path):
                 os.remove(db_path)
