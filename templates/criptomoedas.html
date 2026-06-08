@@ -69,27 +69,27 @@
                             </td>
 
                             <td class="px-4 py-3">
-                                {{ crypto.current_price_brl }}
+                                <span data-field="current-price">{{ crypto.current_price_brl }}</span>
                             </td>
 
                             <td class="px-4 py-3">
                                 {% if crypto.price_change_percentage_24h > 0 %}
-                                    <span class="text-green-500">
+                                    <span class="text-green-500" data-field="change-24h">
                                         +{{ "%.2f"|format(crypto.price_change_percentage_24h) }}%
                                     </span>
                                 {% elif crypto.price_change_percentage_24h == 0 %}
-                                    <span class="text-yellow-500">
+                                    <span class="text-yellow-500" data-field="change-24h">
                                         &nbsp;{{ "%.2f"|format(crypto.price_change_percentage_24h) }}%
                                     </span>
                                 {% else %}
-                                    <span class="text-red-500">
+                                    <span class="text-red-500" data-field="change-24h">
                                         {{ "%.2f"|format(crypto.price_change_percentage_24h) }}%
                                     </span>
                                 {% endif %}
                             </td>
 
                             <td class="px-4 py-3">
-                                {{ crypto.current_marketcap_brl }}
+                                <span data-field="marketcap">{{ crypto.current_marketcap_brl }}</span>
                             </td>
                         </tr>
                         {% endfor %}
@@ -157,6 +157,111 @@
         const modalCryptoCoingeckoId = document.getElementById('modal-crypto-coingecko-id');
         const modalCryptoLastUpdated = document.getElementById('modal-crypto-last-updated');
         const changeColorClasses = ['text-green-500', 'text-yellow-500', 'text-red-500'];
+        const cryptoRowsByCoingeckoId = new Map(
+            Array.from(rows).map(row => [row.dataset.coingeckoId, row])
+        );
+        const pricePollIntervalMs = 60000;
+        let pricePollInFlight = false;
+
+        function formatBRL(value, options = {}) {
+            const amount = Number(value || 0);
+            const fractionDigits = amount > 0.01 ? 2 : 8;
+            return new Intl.NumberFormat('pt-BR', {
+                style: 'currency',
+                currency: 'BRL',
+                minimumFractionDigits: amount > 0.01 ? 2 : 0,
+                maximumFractionDigits: options.maximumFractionDigits ?? fractionDigits,
+            }).format(amount);
+        }
+
+        function formatChange(value) {
+            const changeValue = Number(value || 0);
+            const prefix = changeValue > 0 ? '+' : '';
+            return `${prefix}${changeValue.toFixed(2)}%`;
+        }
+
+        function applyChangeColor(element, value) {
+            const changeValue = Number(value || 0);
+            element.classList.remove(...changeColorClasses);
+            if (changeValue > 0) {
+                element.classList.add('text-green-500');
+            } else if (changeValue === 0) {
+                element.classList.add('text-yellow-500');
+            } else {
+                element.classList.add('text-red-500');
+            }
+        }
+
+        function syncOpenModalFromRow(row) {
+            if (
+                modal.classList.contains('hidden') ||
+                modalCryptoCoingeckoId.textContent !== row.dataset.coingeckoId
+            ) {
+                return;
+            }
+
+            modalCryptoPrice.textContent = row.dataset.currentPrice;
+            modalCryptoMarketcap.textContent = row.dataset.marketcap;
+            modalCryptoLastUpdated.textContent = row.dataset.lastUpdated;
+            modalCryptoChange.textContent = formatChange(row.dataset.change);
+            applyChangeColor(modalCryptoChange, row.dataset.change);
+        }
+
+        function updateCryptoRow(row, crypto) {
+            const price = formatBRL(crypto.current_price);
+            const marketcap = formatBRL(crypto.current_marketcap, { maximumFractionDigits: 2 });
+            const change = Number(crypto.price_change_percentage_24h || 0);
+            const formattedChange = formatChange(change);
+            const priceElement = row.querySelector('[data-field="current-price"]');
+            const marketcapElement = row.querySelector('[data-field="marketcap"]');
+            const changeElement = row.querySelector('[data-field="change-24h"]');
+
+            row.dataset.currentPrice = price;
+            row.dataset.marketcap = marketcap;
+            row.dataset.change = change.toFixed(2);
+            row.dataset.lastUpdated = crypto.last_updated_formatted || 'Não informado';
+
+            if (priceElement) {
+                priceElement.textContent = price;
+            }
+            if (marketcapElement) {
+                marketcapElement.textContent = marketcap;
+            }
+            if (changeElement) {
+                changeElement.textContent = formattedChange;
+                applyChangeColor(changeElement, change);
+            }
+
+            syncOpenModalFromRow(row);
+        }
+
+        async function refreshCryptoPrices() {
+            if (document.hidden || pricePollInFlight) {
+                return;
+            }
+
+            pricePollInFlight = true;
+            try {
+                const response = await fetch('/api/cryptocurrencies', {
+                    headers: { Accept: 'application/json' },
+                });
+                if (!response.ok) {
+                    return;
+                }
+
+                const data = await response.json();
+                (data.cryptocurrencies || []).forEach(crypto => {
+                    const row = cryptoRowsByCoingeckoId.get(crypto.coingecko_id);
+                    if (row) {
+                        updateCryptoRow(row, crypto);
+                    }
+                });
+            } catch (_error) {
+                // Polling errors are intentionally silent to avoid interrupting browsing.
+            } finally {
+                pricePollInFlight = false;
+            }
+        }
 
         function openCryptoModal(row) {
             const changeValue = parseFloat(row.dataset.change || '0');
@@ -236,6 +341,13 @@
         document.addEventListener('keydown', (event) => {
             if (event.key === 'Escape' && !modal.classList.contains('hidden')) {
                 closeCryptoModal();
+            }
+        });
+
+        setInterval(refreshCryptoPrices, pricePollIntervalMs);
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                refreshCryptoPrices();
             }
         });
     </script>
