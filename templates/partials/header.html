@@ -1,7 +1,7 @@
 <header class="sticky top-0 z-40 bg-slate-950/80 backdrop-blur border-b border-slate-800">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex items-center justify-between h-16">
-            <a href="/" class="flex items-center gap-3">
+            <a href="/" class="cursor-pointer flex items-center gap-3">
                 <span class="inline-flex h-8 w-8 items-center justify-center rounded bg-slate-800 text-indigo-400 font-bold">₿</span>
                 <span class="text-white font-semibold tracking-tight hidden sm:inline">Crypto Wallet Manager</span>
                 <span class="text-white font-semibold tracking-tight sm:hidden">CWM</span>
@@ -9,14 +9,14 @@
 
             <div class="hidden md:flex items-center gap-10 ml-10">
                 <nav class="flex items-center gap-8">
-                    <a href="/criptomoedas" class="text-slate-200 hover:text-slate-300 hover:border-b hover:border-white transition-colors {% if request.path == '/criptomoedas' %}font-bold{% endif %}">Criptomoedas</a>
-                    <a href="/portfolio" class="text-slate-200 hover:text-slate-300 hover:border-b hover:border-white transition-colors {% if request.path == '/portfolio' %}font-bold{% endif %}">Portfólio</a>
+                    <a href="/criptomoedas" class="cursor-pointer text-slate-200 hover:text-slate-300 hover:border-b hover:border-white transition-colors {% if request.path == '/criptomoedas' %}font-bold{% endif %}">Criptomoedas</a>
+                    <a href="/portfolio" class="cursor-pointer text-slate-200 hover:text-slate-300 hover:border-b hover:border-white transition-colors {% if request.path == '/portfolio' %}font-bold{% endif %}">Portfólio</a>
                 </nav>
             </div>
 
             <div class="hidden md:flex items-center">
                 {% if not session.get("user_id") %}
-                    <a href="/login" class="inline-flex items-center rounded-md bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 text-sm font-medium shadow-sm transition-colors">Entrar</a>
+                    <a href="/login" class="cursor-pointer inline-flex items-center rounded-md bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 text-sm font-medium shadow-sm transition-colors">Entrar</a>
                 {% else %}
                     <form method="POST" action="/sair">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -30,7 +30,7 @@
             <button
                 type="button"
                 id="mobile-menu-button"
-                class="md:hidden inline-flex items-center rounded-md border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-200"
+                class="cursor-pointer md:hidden inline-flex items-center rounded-md border border-slate-700 bg-slate-900 hover:bg-slate-800 px-3 py-2 text-sm text-slate-200 transition-colors"
                 aria-expanded="false"
                 aria-controls="mobile-menu"
                 aria-label="Abrir menu"
@@ -40,11 +40,11 @@
         </div>
 
         <div id="mobile-menu" class="md:hidden hidden border-t border-slate-800 py-4 space-y-3">
-            <a href="/criptomoedas" class="block text-slate-200 hover:text-slate-300 transition-colors {% if request.path == '/criptomoedas' %}font-bold{% endif %}">Criptomoedas</a>
-            <a href="/portfolio" class="block text-slate-200 hover:text-slate-300 transition-colors {% if request.path == '/portfolio' %}font-bold{% endif %}">Portfólio</a>
+            <a href="/criptomoedas" class="cursor-pointer block text-slate-200 hover:text-slate-300 transition-colors {% if request.path == '/criptomoedas' %}font-bold{% endif %}">Criptomoedas</a>
+            <a href="/portfolio" class="cursor-pointer block text-slate-200 hover:text-slate-300 transition-colors {% if request.path == '/portfolio' %}font-bold{% endif %}">Portfólio</a>
             <div class="pt-2">
                 {% if not session.get("user_id") %}
-                    <a href="/login" class="inline-flex items-center rounded-md bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 text-sm font-medium shadow-sm transition-colors">Entrar</a>
+                    <a href="/login" class="cursor-pointer inline-flex items-center rounded-md bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 text-sm font-medium shadow-sm transition-colors">Entrar</a>
                 {% else %}
                     <form method="POST" action="/sair">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
