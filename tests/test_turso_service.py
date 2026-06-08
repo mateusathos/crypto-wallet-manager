@@ -2,9 +2,14 @@ import os
 import sqlite3
 import tempfile
 import unittest
+from datetime import datetime
 from unittest.mock import patch
 
-from services.turso_service import _push_local_snapshot, _upsert_local_snapshot
+from services.turso_service import (
+    _push_local_snapshot,
+    _upsert_local_snapshot,
+    update_remote_cryptocurrency_prices,
+)
 
 
 class _FakeRemoteConnection:
@@ -163,6 +168,42 @@ class TursoServiceTests(unittest.TestCase):
         finally:
             if os.path.exists(db_path):
                 os.remove(db_path)
+
+    def test_update_remote_cryptocurrency_prices_updates_by_coingecko_id(self):
+        fake_libsql = _FakeLibsqlModule()
+        with patch("services.turso_service.libsql", fake_libsql):
+            updated = update_remote_cryptocurrency_prices(
+                turso_database_url="libsql://example.turso.io",
+                turso_auth_token="token",
+                price_updates=[
+                    {
+                        "coingecko_id": "bitcoin",
+                        "current_price": 100,
+                        "current_marketcap": 200,
+                        "price_change_percentage_24h": 1.5,
+                        "last_updated": datetime(2026, 6, 8, 12, 30, 0),
+                    }
+                ],
+            )
+
+        self.assertEqual(updated, 1)
+        statements = fake_libsql.connection.statements
+        self.assertEqual(len(statements), 1)
+        statement, params = statements[0]
+        self.assertIn("UPDATE cryptocurrencies", statement)
+        self.assertIn("WHERE coingecko_id = ?", statement)
+        self.assertEqual(
+            params,
+            (
+                100,
+                200,
+                1.5,
+                "2026-06-08 12:30:00.000000",
+                "bitcoin",
+            ),
+        )
+        self.assertTrue(fake_libsql.connection.committed)
+        self.assertTrue(fake_libsql.connection.closed)
 
 
 if __name__ == "__main__":

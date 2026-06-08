@@ -1,6 +1,7 @@
 import os
 import sqlite3
 import threading
+from datetime import datetime
 from typing import Optional
 
 try:
@@ -80,6 +81,12 @@ def _connect_and_sync(local_db_path, turso_database_url, turso_auth_token, sync_
 def _quote_identifier(identifier: str) -> str:
     escaped = str(identifier).replace('"', '""')
     return f'"{escaped}"'
+
+
+def _sqlite_datetime(value):
+    if isinstance(value, datetime):
+        return value.strftime("%Y-%m-%d %H:%M:%S.%f")
+    return value
 
 
 def _ordered_table_names(table_names) -> list[str]:
@@ -252,6 +259,44 @@ def _upsert_local_snapshot(
         remote_conn.commit()
     finally:
         local_conn.close()
+        remote_conn.close()
+
+
+def update_remote_cryptocurrency_prices(
+    turso_database_url: str,
+    turso_auth_token: str,
+    price_updates: list[dict],
+) -> int:
+    if libsql is None:
+        raise RuntimeError(
+            "Pacote 'libsql' não está instalado. Rode: pip install libsql"
+        )
+    if not price_updates:
+        return 0
+
+    remote_conn = libsql.connect(turso_database_url, auth_token=turso_auth_token)
+    try:
+        for update in price_updates:
+            remote_conn.execute(
+                """
+                UPDATE cryptocurrencies
+                SET current_price = ?,
+                    current_marketcap = ?,
+                    price_change_percentage_24h = ?,
+                    last_updated = ?
+                WHERE coingecko_id = ?
+                """,
+                (
+                    update["current_price"],
+                    update["current_marketcap"],
+                    update["price_change_percentage_24h"],
+                    _sqlite_datetime(update["last_updated"]),
+                    update["coingecko_id"],
+                ),
+            )
+        remote_conn.commit()
+        return len(price_updates)
+    finally:
         remote_conn.close()
 
 
