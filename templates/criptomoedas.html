@@ -132,10 +132,6 @@
                     <p id="modal-crypto-marketcap" class="font-medium"></p>
                 </div>
                 <div>
-                    <p class="text-slate-400">ID CoinGecko</p>
-                    <p id="modal-crypto-coingecko-id" class="font-medium"></p>
-                </div>
-                <div>
                     <p class="text-slate-400">Última atualização</p>
                     <p id="modal-crypto-last-updated" class="font-medium"></p>
                 </div>
@@ -154,7 +150,6 @@
         const modalCryptoPrice = document.getElementById('modal-crypto-price');
         const modalCryptoChange = document.getElementById('modal-crypto-change');
         const modalCryptoMarketcap = document.getElementById('modal-crypto-marketcap');
-        const modalCryptoCoingeckoId = document.getElementById('modal-crypto-coingecko-id');
         const modalCryptoLastUpdated = document.getElementById('modal-crypto-last-updated');
         const changeColorClasses = ['text-green-500', 'text-yellow-500', 'text-red-500'];
         const cryptoRowsByCoingeckoId = new Map(
@@ -195,7 +190,7 @@
         function syncOpenModalFromRow(row) {
             if (
                 modal.classList.contains('hidden') ||
-                modalCryptoCoingeckoId.textContent !== row.dataset.coingeckoId
+                modal.dataset.coingeckoId !== row.dataset.coingeckoId
             ) {
                 return;
             }
@@ -272,8 +267,8 @@
             modalCryptoSymbol.textContent = row.dataset.symbol;
             modalCryptoPrice.textContent = row.dataset.currentPrice;
             modalCryptoMarketcap.textContent = row.dataset.marketcap;
-            modalCryptoCoingeckoId.textContent = row.dataset.coingeckoId;
             modalCryptoLastUpdated.textContent = row.dataset.lastUpdated;
+            modal.dataset.coingeckoId = row.dataset.coingeckoId;
 
             if (row.dataset.imageUrl) {
                 modalCryptoImage.src = row.dataset.imageUrl;
