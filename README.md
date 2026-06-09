@@ -1,6 +1,6 @@
 # Crypto Portfolio Manager
 
-Aplicação web para gestão de portfólio de criptomoedas, com autenticação, controle de compras e vendas, cálculo de performance e atualização de preços via CoinGecko.
+Aplicação web para gestão de portfólio de criptomoedas, com autenticação por sessão, múltiplos portfólios, controle de compras e vendas, cálculo de performance e atualização de preços via CoinGecko.
 
 O projeto também expõe uma API JSON para consumo por uma versão mobile em Flutter.
 
@@ -17,26 +17,30 @@ O sistema foi pensado em duas interfaces sobre a mesma base de domínio:
 
 ## Funcionalidades
 
-- Cadastro e login de usuários
-- Criação, edição e exclusão de múltiplos portfólios
+- Cadastro, login e logout com sessão persistente
+- Criação de múltiplos portfólios com ícones Lucide selecionáveis
+- Abertura automática do portfólio recém-criado
 - Registro, edição e exclusão de transações de compra e venda
-- Cálculo de custo médio por ativo
-- Cálculo de lucro/prejuízo realizado e não realizado
-- Cálculo de rentabilidade percentual do portfólio
-- Listagem de criptomoedas com preço, market cap, variação 24h e imagem
-- Atualização de preços integrada à CoinGecko
-- API JSON para integração com app mobile
+- Seleção de ativo antes da criação da transação, com modal de busca por criptomoeda
+- Cálculo de custo médio, lucro/prejuízo realizado, não realizado e rentabilidade percentual
+- Listagem de criptomoedas com busca, ordenação por moeda, preço, 24h e market cap
+- Atualização automática de preços na tela de criptomoedas por polling
+- Modal de detalhes de criptomoeda
+- API JSON para autenticação, portfólios, transações e criptomoedas
+- Endpoint protegido para atualização de preços via scheduler externo
 
 ## Stack
 
-- Python
+- Python 3.10+
 - Flask
 - Flask-SQLAlchemy
 - Flask-Migrate
+- SQLAlchemy + `sqlalchemy-libsql`
 - Turso/libSQL
 - CoinGecko API
 - Jinja2
 - Tailwind CSS
+- Lucide Icons
 - Vercel
 - unittest
 
@@ -59,7 +63,7 @@ routes/
   auth.py               # autenticação web
   portfolio.py          # portfólios/transações web
   criptomoedas.py       # listagem web de criptomoedas
-  cron.py               # atualização de preços
+  cron.py               # endpoint de atualização de preços
   api_auth.py           # autenticação JSON
   api_cryptocurrencies.py
   api_portfolios.py
@@ -69,7 +73,8 @@ services/
   portfolio_service.py  # cálculos de carteira
   coingecko_service.py  # integração com preços
   price_update_service.py
-  turso_service.py
+  portfolio_icons.py    # catálogo/normalização de ícones
+  turso_service.py      # utilitários de integração com Turso
 
 models.py              # modelos SQLAlchemy
 app.py                 # criação da aplicação Flask
@@ -84,7 +89,21 @@ tests/                 # testes automatizados
 - A API mobile não acessa o banco diretamente; o fluxo correto é `Flutter -> Flask API -> Turso`.
 - Os cálculos de portfólio ficam em `services/portfolio_service.py`, separados das rotas, para facilitar testes e reuso.
 - As operações de leitura e escrita usam o Turso remoto via SQLAlchemy.
+- A interface web usa polling para atualizar preços da listagem de criptomoedas sem recarregar a página.
+- A atualização de preços é disparada por um endpoint protegido, pensado para scheduler externo.
 - O deploy web usa Vercel com entrypoint serverless em `api/index.py`.
+
+## Atualizações recentes
+
+Mudanças incorporadas nas últimas 24 horas:
+
+- Turso passou a ser o banco principal da aplicação
+- Fluxos de CRUD e navegação do portfólio foram refinados para preservar o portfólio selecionado
+- Interface padronizada com Lucide Icons
+- Seleção de ativo antes de criar transação, com modal dedicado e busca
+- Listagem de criptomoedas com ordenação por moeda, preço, 24h e market cap
+- Flash messages em overlay, sem empurrar o layout
+- Indicadores visuais de carregamento em operações de CRUD
 
 ## API mobile
 
@@ -171,7 +190,8 @@ Criar portfólio:
 
 ```json
 {
-  "name": "Carteira Principal"
+  "name": "Carteira Principal",
+  "icon": "wallet"
 }
 ```
 
@@ -182,6 +202,7 @@ Resposta resumida:
   "portfolio": {
     "id": 1,
     "name": "Carteira Principal",
+    "icon": "wallet",
     "summary": {
       "actives": [],
       "cost": 0.0,
@@ -271,7 +292,21 @@ Quando `CRON_SECRET` está configurado, envie:
 Authorization: Bearer <CRON_SECRET>
 ```
 
-Esse endpoint atualiza os dados das criptomoedas via CoinGecko e sincroniza a tabela `cryptocurrencies`.
+Esse endpoint atualiza os dados das criptomoedas via CoinGecko e persiste o resultado no Turso. O uso esperado é chamar esse endpoint por um scheduler externo.
+
+Na interface web de criptomoedas, os preços também são atualizados periodicamente por polling em:
+
+```http
+GET /api/cryptocurrencies
+```
+
+O polling atualiza os valores exibidos sem precisar dar refresh na página.
+
+## Sessão e segurança
+
+- A sessão do Flask é permanente por padrão e usa `SESSION_LIFETIME_HOURS`, que hoje cai em `12` horas quando a variável não é definida.
+- Formulários HTML protegidos usam token CSRF de sessão.
+- As rotas `/api/...` continuam autenticadas por sessão/cookie quando exigem login.
 
 ## Testes
 
@@ -279,12 +314,18 @@ Esse endpoint atualiza os dados das criptomoedas via CoinGecko e sincroniza a ta
 python -m unittest discover -s tests
 ```
 
-Os testes cobrem regras de cálculo do portfólio, parsing de datas da CoinGecko e rotinas de sincronização com Turso.
+Atualmente a suíte cobre:
+
+- regras de cálculo do portfólio
+- parsing de datas da CoinGecko
+- atualização de preços
+- helpers da rota de criptomoedas
+- normalização de ícones de portfólio
+- configuração de conexão com Turso
 
 ## Próximos passos
 
 - Evoluir a autenticação mobile de sessão/cookie para token próprio
 - Adicionar testes automatizados para as rotas `/api/...`
-- Melhorar resposta detalhada de edição de portfólio
 - Implementar paginação/filtros para histórico de transações
 - Finalizar a integração com o app Flutter
