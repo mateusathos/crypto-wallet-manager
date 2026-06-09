@@ -157,6 +157,7 @@
         );
         const pricePollIntervalMs = 60000;
         let pricePollInFlight = false;
+        let previousBodyPaddingRight = '';
 
         function formatBRL(value, options = {}) {
             const amount = Number(value || 0);
@@ -258,6 +259,21 @@
             }
         }
 
+        function lockBodyScroll() {
+            const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+            previousBodyPaddingRight = document.body.style.paddingRight;
+            document.body.classList.add('overflow-hidden');
+            if (scrollbarWidth > 0) {
+                document.body.style.paddingRight = `${scrollbarWidth}px`;
+            }
+        }
+
+        function unlockBodyScroll() {
+            document.body.classList.remove('overflow-hidden');
+            document.body.style.paddingRight = previousBodyPaddingRight;
+            previousBodyPaddingRight = '';
+        }
+
         function openCryptoModal(row) {
             const changeValue = parseFloat(row.dataset.change || '0');
             const positive = changeValue > 0;
@@ -293,14 +309,14 @@
             modal.classList.remove('hidden');
             modal.classList.add('flex');
             modal.setAttribute('aria-hidden', 'false');
-            document.body.classList.add('overflow-hidden');
+            lockBodyScroll();
         }
 
         function closeCryptoModal() {
             modal.classList.add('hidden');
             modal.classList.remove('flex');
             modal.setAttribute('aria-hidden', 'true');
-            document.body.classList.remove('overflow-hidden');
+            unlockBodyScroll();
         }
 
         searchBar.addEventListener('input', function() {
