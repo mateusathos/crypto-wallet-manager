@@ -522,6 +522,11 @@
             }
         }
 
+        function portfolioUrl(portfolioId) {
+            if (!portfolioId) return '/portfolio';
+            return `/portfolio?selected_portfolio_id=${encodeURIComponent(portfolioId)}`;
+        }
+
         function setButtonLoading(button, isLoading, label = 'Processando') {
             if (!button) return;
             if (isLoading) {
@@ -581,7 +586,7 @@
                             headers: { 'X-CSRF-Token': csrfToken },
                         });
                         if (resp.ok) {
-                            location.href = '/portfolio';
+                            location.href = portfolioUrl(currentPortfolioId);
                             return;
                         }
                         setButtonLoading(delBtn, false);
@@ -641,7 +646,7 @@
                             headers: { 'X-CSRF-Token': csrfToken },
                         });
                         if (resp.ok) {
-                            location.href = '/portfolio';
+                            location.href = portfolioUrl(currentPortfolioId);
                             return;
                         }
                         setButtonLoading(delBtn, false);
@@ -673,7 +678,7 @@
                                 body: JSON.stringify(data),
                             });
                             if (resp.ok) {
-                                location.href = '/portfolio';
+                                location.href = portfolioUrl(currentPortfolioId);
                                 return;
                             }
                             setButtonLoading(confirmEditBtn, false);

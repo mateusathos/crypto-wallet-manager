@@ -257,7 +257,7 @@ def delete_asset(portfolio_id: int, cryptocurrency_id: int):
     db.session.commit()
 
     flash("Ativo excluído (transações removidas)", "success")
-    return redirect(url_for("portfolio.portfolio"))
+    return _portfolio_redirect(portfolio_id)
 
 
 @portfolio_bp.route("/transactions/<int:transaction_id>/delete", methods=["POST"])
@@ -276,11 +276,12 @@ def delete_transaction(transaction_id: int):
         flash("Transação não encontrada", "error")
         return redirect(url_for("portfolio.portfolio"))
 
+    portfolio_id = txn.portfolio_id
     db.session.delete(txn)
     db.session.commit()
 
     flash("Transação excluída com sucesso", "success")
-    return redirect(url_for("portfolio.portfolio"))
+    return _portfolio_redirect(portfolio_id)
 
 
 @portfolio_bp.route("/transactions/<int:transaction_id>/edit", methods=["POST"])
