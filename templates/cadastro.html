@@ -36,14 +36,56 @@
 
       <div class="space-y-2">
         <label for="senha" class="block text-sm text-slate-300">Senha</label>
-        <input id="senha" name="senha" type="password" required
-          class="w-full rounded-md bg-slate-900 border border-slate-700 text-slate-100 placeholder-slate-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="••••••••">
+        <div class="relative">
+          <input id="senha" name="senha" type="password" required
+            class="w-full rounded-md bg-slate-900 border border-slate-700 text-slate-100 placeholder-slate-400 px-3 py-2 pr-11 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="••••••••">
+          <button
+            type="button"
+            class="cursor-pointer absolute inset-y-0 right-0 inline-flex w-11 items-center justify-center text-slate-400 hover:text-slate-100 transition-colors"
+            aria-label="Mostrar senha"
+            aria-pressed="false"
+            data-toggle-password
+            data-target="senha"
+          >
+            <svg data-eye-open class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+            <svg data-eye-closed class="hidden h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M3 3l18 18"></path>
+              <path d="M10.6 10.6A3 3 0 0 0 12 15a3 3 0 0 0 2.4-1.2"></path>
+              <path d="M9.9 5.2A10.3 10.3 0 0 1 12 5c6 0 9.5 7 9.5 7a16.9 16.9 0 0 1-3.1 4"></path>
+              <path d="M6.7 6.7A16.5 16.5 0 0 0 2.5 12S6 19 12 19a9.7 9.7 0 0 0 4.2-.9"></path>
+            </svg>
+          </button>
+        </div>
       </div>
 
       <div class="space-y-2">
         <label for="confirmar" class="block text-sm text-slate-300">Confirmar senha</label>
-        <input id="confirmar" name="confirmar" type="password" required
-          class="w-full rounded-md bg-slate-900 border border-slate-700 text-slate-100 placeholder-slate-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="••••••••">
+        <div class="relative">
+          <input id="confirmar" name="confirmar" type="password" required
+            class="w-full rounded-md bg-slate-900 border border-slate-700 text-slate-100 placeholder-slate-400 px-3 py-2 pr-11 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="••••••••">
+          <button
+            type="button"
+            class="cursor-pointer absolute inset-y-0 right-0 inline-flex w-11 items-center justify-center text-slate-400 hover:text-slate-100 transition-colors"
+            aria-label="Mostrar senha"
+            aria-pressed="false"
+            data-toggle-password
+            data-target="confirmar"
+          >
+            <svg data-eye-open class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"></path>
+              <circle cx="12" cy="12" r="3"></circle>
+            </svg>
+            <svg data-eye-closed class="hidden h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M3 3l18 18"></path>
+              <path d="M10.6 10.6A3 3 0 0 0 12 15a3 3 0 0 0 2.4-1.2"></path>
+              <path d="M9.9 5.2A10.3 10.3 0 0 1 12 5c6 0 9.5 7 9.5 7a16.9 16.9 0 0 1-3.1 4"></path>
+              <path d="M6.7 6.7A16.5 16.5 0 0 0 2.5 12S6 19 12 19a9.7 9.7 0 0 0 4.2-.9"></path>
+            </svg>
+          </button>
+        </div>
       </div>
 
       <button type="submit" class="w-full cursor-pointer inline-flex justify-center rounded-md bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 text-sm font-medium shadow-sm transition-colors">Criar conta</button>
@@ -64,6 +106,24 @@
         }, 5000);
       }
     })();
+
+    document.querySelectorAll('[data-toggle-password]').forEach((button) => {
+      const input = document.getElementById(button.dataset.target);
+      const eyeOpen = button.querySelector('[data-eye-open]');
+      const eyeClosed = button.querySelector('[data-eye-closed]');
+      if (!input || !eyeOpen || !eyeClosed) {
+        return;
+      }
+
+      button.addEventListener('click', () => {
+        const shouldShow = input.type === 'password';
+        input.type = shouldShow ? 'text' : 'password';
+        button.setAttribute('aria-label', shouldShow ? 'Esconder senha' : 'Mostrar senha');
+        button.setAttribute('aria-pressed', String(shouldShow));
+        eyeOpen.classList.toggle('hidden', shouldShow);
+        eyeClosed.classList.toggle('hidden', !shouldShow);
+      });
+    });
   </script>
 </body>
 </html>
