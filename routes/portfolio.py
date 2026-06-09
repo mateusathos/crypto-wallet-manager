@@ -35,6 +35,17 @@ def _parse_iso_date(raw_value):
         return None
 
 
+def _portfolio_redirect(portfolio_id: int | None = None):
+    if portfolio_id is None:
+        return redirect(url_for("portfolio.portfolio"))
+    return redirect(
+        url_for(
+            "portfolio.portfolio",
+            selected_portfolio_id=portfolio_id,
+        )
+    )
+
+
 def _current_quantity(
     portfolio_id: int,
     cryptocurrency_id: int,
@@ -163,7 +174,7 @@ def create_transaction():
         cryptocurrency_id = int(request.form.get("cryptocurrency_id"))
     except (TypeError, ValueError):
         flash("Dados inválidos na transação", "error")
-        return redirect(url_for("portfolio.portfolio"))
+        return _portfolio_redirect()
 
     quantity = _parse_positive_decimal(request.form.get("quantity"))
     price = _parse_positive_decimal(request.form.get("price"))
@@ -172,27 +183,27 @@ def create_transaction():
 
     if quantity is None or price is None or transaction_date is None:
         flash("Dados inválidos na transação", "error")
-        return redirect(url_for("portfolio.portfolio"))
+        return _portfolio_redirect(portfolio_id)
 
     portfolio = Portfolio.query.filter_by(id=portfolio_id, user_id=session["user_id"]).first()
     if not portfolio:
         flash("Portfólio não encontrado", "error")
-        return redirect(url_for("portfolio.portfolio"))
+        return _portfolio_redirect()
 
     crypto = Cryptocurrency.query.filter_by(id=cryptocurrency_id).first()
     if not crypto:
         flash("Criptomoeda não encontrada", "error")
-        return redirect(url_for("portfolio.portfolio"))
+        return _portfolio_redirect(portfolio_id)
 
     if transaction_type not in {"compra", "venda"}:
         flash("Tipo de transação inválido", "error")
-        return redirect(url_for("portfolio.portfolio"))
+        return _portfolio_redirect(portfolio_id)
 
     if transaction_type == "venda":
         current_qty = _current_quantity(portfolio_id, cryptocurrency_id)
         if quantity > current_qty:
             flash("Quantidade de venda superior ao disponível", "error")
-            return redirect(url_for("portfolio.portfolio"))
+            return _portfolio_redirect(portfolio_id)
 
     txn = Transaction(
         portfolio_id=portfolio_id,
@@ -206,7 +217,7 @@ def create_transaction():
     db.session.commit()
 
     flash("Transação adicionada com sucesso", "success")
-    return redirect(url_for("portfolio.portfolio"))
+    return _portfolio_redirect(portfolio_id)
 
 
 @portfolio_bp.route("/portfolio/<int:portfolio_id>/delete", methods=["POST"])
