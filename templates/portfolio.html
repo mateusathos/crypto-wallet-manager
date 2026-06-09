@@ -302,7 +302,7 @@
     <div id="crypto-picker-modal" class="fixed inset-0 z-50 hidden">
         <div class="absolute inset-0 bg-slate-950/70 backdrop-blur-sm" data-close-crypto-picker></div>
         <div class="relative z-10 mx-auto flex min-h-screen w-full items-center p-4">
-            <div class="mx-auto flex max-h-[85vh] w-full max-w-2xl min-w-0 flex-col overflow-hidden rounded-xl border border-slate-800 bg-slate-900 shadow-xl">
+            <div class="mx-auto flex h-[85vh] w-full max-w-2xl min-w-0 flex-col overflow-hidden rounded-xl border border-slate-800 bg-slate-900 shadow-xl sm:h-[42rem]">
                 <div class="flex items-start justify-between gap-4 border-b border-slate-800 px-4 py-5 sm:px-6">
                     <div class="min-w-0">
                         <h3 class="text-xl font-semibold text-white">Escolher ativo</h3>
@@ -325,31 +325,33 @@
                     </div>
                 </div>
 
-                <div id="crypto-picker-list" class="grid min-w-0 gap-3 overflow-x-hidden overflow-y-auto px-4 py-5 sm:grid-cols-2 sm:px-6">
-                    {% for crypto in cryptos %}
-                        <button
-                            type="button"
-                            class="crypto-picker-item cursor-pointer rounded-lg border border-slate-800 bg-slate-950/80 p-4 text-left hover:border-slate-700 hover:bg-slate-800/80"
-                            data-crypto-picker-item
-                            data-crypto-id="{{ crypto.id }}"
-                            data-crypto-name="{{ crypto.name }}"
-                            data-crypto-symbol="{{ crypto.symbol }}"
-                            data-crypto-image="{{ crypto.image_url }}"
-                            data-crypto-price="{{ crypto.current_price or 0 }}"
-                        >
-                            <div class="flex min-w-0 items-center gap-3">
-                                <img src="{{ crypto.image_url }}" alt="{{ crypto.name }}" class="h-10 w-10 shrink-0 rounded-full object-cover">
-                                <div class="min-w-0">
-                                    <p class="truncate font-semibold text-white">{{ crypto.name }}</p>
-                                    <p class="text-sm uppercase tracking-wide text-slate-400">{{ crypto.symbol }}</p>
+                <div class="relative min-h-0 flex-1">
+                    <div id="crypto-picker-list" class="grid h-full min-w-0 gap-3 overflow-x-hidden overflow-y-auto px-4 py-5 sm:grid-cols-2 sm:px-6">
+                        {% for crypto in cryptos %}
+                            <button
+                                type="button"
+                                class="crypto-picker-item cursor-pointer rounded-lg border border-slate-800 bg-slate-950/80 p-4 text-left hover:border-slate-700 hover:bg-slate-800/80"
+                                data-crypto-picker-item
+                                data-crypto-id="{{ crypto.id }}"
+                                data-crypto-name="{{ crypto.name }}"
+                                data-crypto-symbol="{{ crypto.symbol }}"
+                                data-crypto-image="{{ crypto.image_url }}"
+                                data-crypto-price="{{ crypto.current_price or 0 }}"
+                            >
+                                <div class="flex min-w-0 items-center gap-3">
+                                    <img src="{{ crypto.image_url }}" alt="{{ crypto.name }}" class="h-10 w-10 shrink-0 rounded-full object-cover">
+                                    <div class="min-w-0">
+                                        <p class="truncate font-semibold text-white">{{ crypto.name }}</p>
+                                        <p class="text-sm uppercase tracking-wide text-slate-400">{{ crypto.symbol }}</p>
+                                    </div>
                                 </div>
-                            </div>
-                        </button>
-                    {% endfor %}
-                </div>
+                            </button>
+                        {% endfor %}
+                    </div>
 
-                <div id="crypto-picker-empty" class="hidden px-4 pb-6 text-sm text-slate-400 sm:px-6">
-                    Nenhuma criptomoeda encontrada.
+                    <div id="crypto-picker-empty" class="absolute inset-0 hidden flex items-center justify-center px-6 text-center text-sm text-slate-400">
+                        Nenhuma criptomoeda encontrada.
+                    </div>
                 </div>
             </div>
         </div>
