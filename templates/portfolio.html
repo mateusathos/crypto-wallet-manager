@@ -7,7 +7,6 @@
         <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
         <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-        <script src="https://unpkg.com/lucide@latest"></script>
         <style>
             /* Select2 dark style tweaks to match the UI */
             .select2-container--default .select2-selection--single {
@@ -126,8 +125,12 @@
 
                             <div class="flex flex-wrap gap-2 sm:gap-3">
                                 <button type="button" data-open-new-transaction class="cursor-pointer inline-flex items-center rounded-md bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 text-sm font-medium shadow-sm transition-colors">Adicionar transação</button>
-                                <button type="button" id="sp-delete-portfolio" aria-label="Excluir portfólio" class="cursor-pointer inline-flex items-center rounded-md bg-red-600 hover:bg-red-500 text-white p-2 text-base font-medium shadow-sm transition-colors">🗑️</button>
-                                <button type="button" id="sp-close" class="cursor-pointer text-slate-400 hover:text-slate-200" aria-label="Fechar">✕</button>
+                                <button type="button" id="sp-delete-portfolio" aria-label="Excluir portfólio" class="cursor-pointer inline-flex items-center rounded-md bg-red-600 hover:bg-red-500 text-white p-2 text-base font-medium shadow-sm transition-colors">
+                                    <i data-lucide="trash-2" class="h-4 w-4"></i>
+                                </button>
+                                <button type="button" id="sp-close" class="cursor-pointer text-slate-400 hover:text-slate-200" aria-label="Fechar">
+                                    <i data-lucide="x" class="h-5 w-5"></i>
+                                </button>
                             </div>
                         </div>
     
@@ -194,7 +197,9 @@
                                         <p class="font-semibold text-white" data-field="avgPrice"></p>
                                     </td>
                                     <td class="px-4 py-3">
-                                        <button type="button" aria-label="Excluir ativo" class="cursor-pointer p-1 text-base bg-red-600 hover:bg-red-500 text-white rounded-md" data-action="delete-active">🗑️</button>
+                                        <button type="button" aria-label="Excluir ativo" class="cursor-pointer inline-flex items-center rounded-md bg-red-600 p-1 text-white hover:bg-red-500" data-action="delete-active">
+                                            <i data-lucide="trash-2" class="h-4 w-4"></i>
+                                        </button>
                                     </td>
                                 </tr>
                             </template>
@@ -234,11 +239,13 @@
                                     <td class="px-4 py-3"><span data-field="total"></span></td>
                                     <td class="px-4 py-3">
                                         <button type="button" aria-label="Editar transação" 
-                                        class="cursor-pointer p-1 text-sm bg-purple-600 hover:bg-purple-500 text-white rounded-md" data-action="edit-txn">
-                                        ✏️</button>
+                                        class="cursor-pointer inline-flex items-center rounded-md bg-purple-600 p-1 text-white hover:bg-purple-500" data-action="edit-txn">
+                                            <i data-lucide="pencil" class="h-4 w-4"></i>
+                                        </button>
                                         <button type="button" aria-label="Excluir transação" 
-                                        class="cursor-pointer p-1 text-sm bg-red-600 hover:bg-red-500 text-white rounded-md" data-action="delete-txn">
-                                        🗑️</button>
+                                        class="cursor-pointer inline-flex items-center rounded-md bg-red-600 p-1 text-white hover:bg-red-500" data-action="delete-txn">
+                                            <i data-lucide="trash-2" class="h-4 w-4"></i>
+                                        </button>
                                     </td>
                                 </tr>
                             </template>
@@ -262,7 +269,9 @@
                         <h3 class="text-xl font-semibold text-white">Criar Portfólio</h3>
                         <p class="text-slate-400 text-sm">Defina um nome para organizar seus investimentos.</p>
                     </div>
-                    <button type="button" class="cursor-pointer text-slate-400 hover:text-slate-200" aria-label="Fechar" data-close-new-portfolio>✕</button>
+                    <button type="button" class="cursor-pointer text-slate-400 hover:text-slate-200" aria-label="Fechar" data-close-new-portfolio>
+                        <i data-lucide="x" class="h-5 w-5"></i>
+                    </button>
                 </div>
 
                 <form action="/portfolio/create" method="POST" class="mt-6 space-y-4">
@@ -317,7 +326,9 @@
                         <h3 class="text-xl font-semibold text-white">Adicionar transação</h3>
                         <p class="text-slate-400 text-sm">Informe os dados da compra/venda.</p>
                     </div>
-                    <button type="button" class="cursor-pointer text-slate-400 hover:text-slate-200" aria-label="Fechar" data-close-new-transaction>✕</button>
+                    <button type="button" class="cursor-pointer text-slate-400 hover:text-slate-200" aria-label="Fechar" data-close-new-transaction>
+                        <i data-lucide="x" class="h-5 w-5"></i>
+                    </button>
                 </div>
 
                 <form action="/transactions/create" method="POST" class="mt-6 space-y-4">
@@ -391,7 +402,9 @@
                     <div>
                         <h3 class="text-xl font-semibold text-white">Editar transação</h3>
                     </div>
-                    <button type="button" class="cursor-pointer text-slate-400 hover:text-slate-200" aria-label="Fechar" data-close-edit-transaction>✕</button>
+                    <button type="button" class="cursor-pointer text-slate-400 hover:text-slate-200" aria-label="Fechar" data-close-edit-transaction>
+                        <i data-lucide="x" class="h-5 w-5"></i>
+                    </button>
                 </div>
 
                 <form id="edit-transaction-form" action="#" method="POST" class="mt-6 space-y-4">
@@ -566,6 +579,7 @@
             });
 
             activeCard.classList.remove('hidden');
+            renderLucideIcons();
         }
 
         function renderTransactions(txns) {
@@ -632,6 +646,7 @@
             });
 
             txnCard.classList.remove('hidden');
+            renderLucideIcons();
         }
 
         let currentPortfolioId = null;
