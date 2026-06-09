@@ -839,6 +839,7 @@
         const ntQtdInput = document.getElementById('quantity-input');
         const ntDateInput = document.getElementById('transaction_date');
         let selectedCryptoMeta = null;
+        let reopenTransactionAfterPickerClose = false;
 
         function setDefaultPriceFromCrypto(priceValue) {
             if (!ntPriceInput) return;
@@ -873,8 +874,9 @@
             setValueSpent();
         }
 
-        function openCryptoPicker() {
+        function openCryptoPicker(options = {}) {
             if (!currentPortfolioId) return;
+            reopenTransactionAfterPickerClose = Boolean(options.reopenTransaction);
             cpModal.classList.remove('hidden');
             if (cpSearch) {
                 cpSearch.value = '';
@@ -885,6 +887,10 @@
 
         function closeCryptoPicker() {
             cpModal.classList.add('hidden');
+            if (reopenTransactionAfterPickerClose) {
+                reopenTransactionAfterPickerClose = false;
+                openNt();
+            }
         }
 
         function openNt() {
@@ -932,6 +938,7 @@
                     price: item.getAttribute('data-crypto-price') || '',
                 };
                 updateSelectedCrypto(meta);
+                reopenTransactionAfterPickerClose = false;
                 closeCryptoPicker();
                 openNt();
             });
@@ -940,14 +947,17 @@
             cpSearch.addEventListener('input', filterCryptoPickerItems);
         }
         if (ntSelectedCrypto) {
-            ntSelectedCrypto.addEventListener('click', openCryptoPicker);
+            ntSelectedCrypto.addEventListener('click', () => {
+                closeNt();
+                openCryptoPicker({ reopenTransaction: true });
+            });
         }
         if (ntForm) {
             ntForm.addEventListener('submit', (event) => {
                 if (ntCryptoInput && ntCryptoInput.value) return;
                 event.preventDefault();
                 closeNt();
-                openCryptoPicker();
+                openCryptoPicker({ reopenTransaction: true });
             });
         }
 
@@ -965,7 +975,7 @@
         if (ntQtdInput) {
             ntQtdInput.addEventListener('input', setValueSpent);
         }
-        ntOpeners.forEach(btn => btn.addEventListener('click', openCryptoPicker));
+        ntOpeners.forEach(btn => btn.addEventListener('click', () => openCryptoPicker()));
         ntClosers.forEach(btn => btn.addEventListener('click', closeNt));
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
