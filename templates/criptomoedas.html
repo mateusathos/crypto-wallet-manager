@@ -4,6 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        .sort-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: #cbd5e1;
+            transition: color 150ms ease;
+        }
+
+        .sort-button:hover {
+            color: #f8fafc;
+        }
+
+        .sort-button[data-active="true"] {
+            color: #f8fafc;
+        }
+    </style>
     <title>Crypto Portfolio</title>
 </head>
 <body class="bg-slate-950 text-slate-100 min-h-screen">
@@ -28,14 +45,34 @@
                     <thead class="border-t border-t-slate-800">
                         <tr class="text-left">
                             <th class="px-4 py-3">#</th>
-                            <th class="px-4 py-3">Moeda</th>
-                            <th class="px-4 py-3">Preço</th>
-                            <th class="px-4 py-3">24h</th>
-                            <th class="px-4 py-3">Cap. de Mercado</th>
+                            <th class="px-4 py-3">
+                                <button type="button" class="sort-button cursor-pointer" data-sort-key="name" data-active="false">
+                                    <span>Moeda</span>
+                                    <i data-sort-icon data-lucide="arrow-up-down" class="h-4 w-4"></i>
+                                </button>
+                            </th>
+                            <th class="px-4 py-3">
+                                <button type="button" class="sort-button cursor-pointer" data-sort-key="price" data-active="false">
+                                    <span>Preço</span>
+                                    <i data-sort-icon data-lucide="arrow-up-down" class="h-4 w-4"></i>
+                                </button>
+                            </th>
+                            <th class="px-4 py-3">
+                                <button type="button" class="sort-button cursor-pointer" data-sort-key="change" data-active="false">
+                                    <span>24h</span>
+                                    <i data-sort-icon data-lucide="arrow-up-down" class="h-4 w-4"></i>
+                                </button>
+                            </th>
+                            <th class="px-4 py-3">
+                                <button type="button" class="sort-button cursor-pointer" data-sort-key="marketcap" data-active="false">
+                                    <span>Cap. de Mercado</span>
+                                    <i data-sort-icon data-lucide="arrow-up-down" class="h-4 w-4"></i>
+                                </button>
+                            </th>
                         </tr>
                     </thead>
 
-                    <tbody>
+                    <tbody id="crypto-table-body">
                         {% for crypto in cryptos %}
                         <tr
                             class="border-t border-t-slate-800 hover:bg-slate-900/70 cursor-pointer crypto-row focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -45,12 +82,16 @@
                             data-symbol="{{ crypto.symbol|upper }}"
                             data-coingecko-id="{{ crypto.coingecko_id }}"
                             data-image-url="{{ crypto.image_url or '' }}"
+                            data-name-raw="{{ crypto.name|lower }}"
+                            data-price-raw="{{ crypto.current_price }}"
+                            data-marketcap-raw="{{ crypto.current_marketcap }}"
+                            data-change-raw="{{ "%.8f"|format(crypto.price_change_percentage_24h) }}"
                             data-current-price="{{ crypto.current_price_brl }}"
                             data-marketcap="{{ crypto.current_marketcap_brl }}"
                             data-change="{{ "%.2f"|format(crypto.price_change_percentage_24h) }}"
                             data-last-updated="{{ crypto.last_updated }}"
                         >
-                            <td class="px-4 py-3">
+                            <td class="px-4 py-3" data-field="rank">
                                 {{ loop.index }}
                             </td>
 
@@ -141,7 +182,9 @@
 
     <script>
         const searchBar = document.getElementById('search-bar');
-        const rows = document.querySelectorAll('#crypto-table tbody tr');
+        const tableBody = document.getElementById('crypto-table-body');
+        const rows = Array.from(document.querySelectorAll('#crypto-table tbody tr'));
+        const sortButtons = Array.from(document.querySelectorAll('[data-sort-key]'));
         const modal = document.getElementById('crypto-modal');
         const closeModalButton = document.getElementById('close-crypto-modal');
         const modalCryptoName = document.getElementById('modal-crypto-name');
@@ -158,6 +201,14 @@
         const pricePollIntervalMs = 60000;
         let pricePollInFlight = false;
         let previousBodyPaddingRight = '';
+        let sortState = { key: 'marketcap', direction: 'desc' };
+        let searchQuery = '';
+
+        function renderLucideIcons() {
+            if (window.lucide) {
+                window.lucide.createIcons();
+            }
+        }
 
         function formatBRL(value, options = {}) {
             const amount = Number(value || 0);
@@ -215,6 +266,9 @@
             row.dataset.currentPrice = price;
             row.dataset.marketcap = marketcap;
             row.dataset.change = change.toFixed(2);
+            row.dataset.priceRaw = String(Number(crypto.current_price || 0));
+            row.dataset.marketcapRaw = String(Number(crypto.current_marketcap || 0));
+            row.dataset.changeRaw = String(change);
             row.dataset.lastUpdated = crypto.last_updated_formatted || 'Não informado';
 
             if (priceElement) {
@@ -229,6 +283,75 @@
             }
 
             syncOpenModalFromRow(row);
+        }
+
+        function getSortValue(row, key) {
+            if (key === 'name') return row.dataset.nameRaw || '';
+            if (key === 'price') return Number(row.dataset.priceRaw || 0);
+            if (key === 'change') return Number(row.dataset.changeRaw || 0);
+            if (key === 'marketcap') return Number(row.dataset.marketcapRaw || 0);
+            return '';
+        }
+
+        function matchesSearch(row) {
+            if (!searchQuery) return true;
+            const name = (row.dataset.name || '').toLowerCase();
+            const symbol = (row.dataset.symbol || '').toLowerCase();
+            return name.includes(searchQuery) || symbol.includes(searchQuery);
+        }
+
+        function updateRankNumbers(visibleRows) {
+            visibleRows.forEach((row, index) => {
+                const rankCell = row.querySelector('[data-field="rank"]');
+                if (rankCell) {
+                    rankCell.textContent = String(index + 1);
+                }
+            });
+        }
+
+        function updateSortButtons() {
+            sortButtons.forEach((button) => {
+                const isActive = button.dataset.sortKey === sortState.key;
+                button.dataset.active = isActive ? 'true' : 'false';
+                const icon = button.querySelector('[data-sort-icon]');
+                if (!icon) return;
+                if (!isActive) {
+                    icon.setAttribute('data-lucide', 'arrow-up-down');
+                } else {
+                    icon.setAttribute(
+                        'data-lucide',
+                        sortState.direction === 'asc' ? 'arrow-up' : 'arrow-down'
+                    );
+                }
+            });
+            renderLucideIcons();
+        }
+
+        function applyTableState() {
+            const visibleRows = rows.filter(matchesSearch).sort((rowA, rowB) => {
+                const valueA = getSortValue(rowA, sortState.key);
+                const valueB = getSortValue(rowB, sortState.key);
+
+                if (sortState.key === 'name') {
+                    const comparison = String(valueA).localeCompare(String(valueB), 'pt-BR');
+                    return sortState.direction === 'asc' ? comparison : -comparison;
+                }
+
+                const comparison = Number(valueA) - Number(valueB);
+                return sortState.direction === 'asc' ? comparison : -comparison;
+            });
+
+            const hiddenRows = rows.filter((row) => !matchesSearch(row));
+            visibleRows.forEach((row) => {
+                row.style.display = '';
+                tableBody.appendChild(row);
+            });
+            hiddenRows.forEach((row) => {
+                row.style.display = 'none';
+                tableBody.appendChild(row);
+            });
+            updateRankNumbers(visibleRows);
+            updateSortButtons();
         }
 
         async function refreshCryptoPrices() {
@@ -252,6 +375,7 @@
                         updateCryptoRow(row, crypto);
                     }
                 });
+                applyTableState();
             } catch (_error) {
                 // Polling errors are intentionally silent to avoid interrupting browsing.
             } finally {
@@ -320,16 +444,23 @@
         }
 
         searchBar.addEventListener('input', function() {
-            const filter = this.value.toLowerCase();
-            rows.forEach(row => {
-                const name = row.querySelector('.crypto-name').textContent.toLowerCase();
-                const symbol = row.querySelector('.crypto-symbol').textContent.toLowerCase();
+            searchQuery = this.value.trim().toLowerCase();
+            applyTableState();
+        });
 
-                if (name.includes(filter) || symbol.includes(filter)) {
-                    row.style.display = '';
+        sortButtons.forEach((button) => {
+            button.addEventListener('click', () => {
+                const nextKey = button.dataset.sortKey;
+                if (!nextKey) return;
+                if (sortState.key === nextKey) {
+                    sortState.direction = sortState.direction === 'asc' ? 'desc' : 'asc';
                 } else {
-                    row.style.display = 'none';
+                    sortState = {
+                        key: nextKey,
+                        direction: nextKey === 'name' ? 'asc' : 'desc',
+                    };
                 }
+                applyTableState();
             });
         });
 
@@ -361,6 +492,8 @@
                 refreshCryptoPrices();
             }
         });
+
+        applyTableState();
     </script>
 </body>
 </html>
