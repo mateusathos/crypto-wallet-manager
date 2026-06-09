@@ -1,7 +1,6 @@
 from flask import Blueprint, current_app, jsonify, request
 
 from services.price_update_service import refresh_all_cryptocurrency_prices_remote_first
-from services.turso_service import sync_now
 
 
 cron_bp = Blueprint("cron", __name__)
@@ -21,7 +20,6 @@ def update_prices():
     if not _cron_authorized():
         return jsonify({"error": "unauthorized"}), 401
 
-    sync_now(current_app)
     result = refresh_all_cryptocurrency_prices_remote_first(
         current_app,
         vs_currency="brl",

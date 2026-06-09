@@ -25,7 +25,7 @@ class PriceUpdateServiceTests(unittest.TestCase):
         self.assertEqual(parsed.hour, 10)
         self.assertEqual(parsed.minute, 34)
 
-    def test_remote_first_updates_turso_before_local_commit(self):
+    def test_remote_first_updates_prices_with_single_database_commit(self):
         crypto = SimpleNamespace(
             coingecko_id="bitcoin",
             current_price=None,
@@ -35,12 +35,8 @@ class PriceUpdateServiceTests(unittest.TestCase):
         )
         events = []
 
-        def remote_update(**_kwargs):
-            events.append("remote")
-            return 1
-
-        def local_commit():
-            events.append("local")
+        def commit():
+            events.append("commit")
 
         app = SimpleNamespace(
             config={
@@ -65,14 +61,10 @@ class PriceUpdateServiceTests(unittest.TestCase):
                     }
                 ],
             ), \
-            patch(
-                "services.price_update_service.update_remote_cryptocurrency_prices",
-                side_effect=remote_update,
-            ), \
-            patch("services.price_update_service.db.session.commit", side_effect=local_commit):
+            patch("services.price_update_service.db.session.commit", side_effect=commit):
             result = refresh_all_cryptocurrency_prices_remote_first(app)
 
-        self.assertEqual(events, ["remote", "local"])
+        self.assertEqual(events, ["commit"])
         self.assertEqual(result["updated"], 1)
         self.assertEqual(result["remote_updated"], 1)
         self.assertEqual(crypto.current_price, 100)

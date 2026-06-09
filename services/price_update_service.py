@@ -3,7 +3,6 @@ from datetime import datetime, timezone
 from extensions import db
 from models import Cryptocurrency
 from services.coingecko_service import coins_markets
-from services.turso_service import update_remote_cryptocurrency_prices
 
 
 DEFAULT_BATCH_SIZE = 100
@@ -139,19 +138,9 @@ def refresh_all_cryptocurrency_prices_remote_first(
         batch_size=batch_size,
     )
 
-    try:
-        remote_updated = update_remote_cryptocurrency_prices(
-            turso_database_url=app.config["TURSO_DATABASE_URL"],
-            turso_auth_token=app.config["TURSO_AUTH_TOKEN"],
-            price_updates=price_updates,
-        )
-    except Exception:
-        db.session.rollback()
-        raise
-
     updated_count = _apply_local_price_updates(cryptos, price_updates)
     return {
         "updated": updated_count,
         "total": len(cryptos),
-        "remote_updated": remote_updated,
+        "remote_updated": updated_count,
     }

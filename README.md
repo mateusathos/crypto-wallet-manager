@@ -79,11 +79,11 @@ tests/                 # testes automatizados
 
 ## Decisões técnicas
 
-- O banco usa Turso/libSQL, mantendo compatibilidade com SQLite no fluxo local.
+- O banco usa Turso/libSQL como fonte única da verdade.
 - O backend mantém a responsabilidade sobre regras sensíveis, como autenticação, ownership de portfólios e validação de venda maior que a quantidade disponível.
 - A API mobile não acessa o banco diretamente; o fluxo correto é `Flutter -> Flask API -> Turso`.
 - Os cálculos de portfólio ficam em `services/portfolio_service.py`, separados das rotas, para facilitar testes e reuso.
-- A sincronização com Turso pode ser desativada em desenvolvimento com `TURSO_PUSH_AFTER_WRITE=false`, evitando lentidão em cada escrita local.
+- As operações de leitura e escrita usam o Turso remoto via SQLAlchemy.
 - O deploy web usa Vercel com entrypoint serverless em `api/index.py`.
 
 ## API mobile
@@ -237,9 +237,6 @@ Crie um `.env` com base em `.env.example`:
 ```env
 TURSO_DATABASE_URL=libsql://your-database.turso.io
 TURSO_AUTH_TOKEN=your_turso_token
-TURSO_LOCAL_DB_PATH=instance/app.db
-TURSO_SYNC_INTERVAL_SECONDS=0
-TURSO_PUSH_AFTER_WRITE=false
 SECRET_KEY=replace_with_a_strong_random_secret
 CRON_SECRET=replace_with_a_strong_random_secret
 COINGECKO_API_KEY=

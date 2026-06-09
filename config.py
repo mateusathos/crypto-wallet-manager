@@ -1,6 +1,7 @@
 import os
 import secrets
 from datetime import timedelta
+from urllib.parse import parse_qsl, urlencode, urlsplit
 
 from dotenv import load_dotenv
 
@@ -25,16 +26,19 @@ def _get_bool_env(name: str, default: bool) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
-def _as_sqlite_uri(db_path: str) -> str:
-    absolute_path = os.path.abspath(db_path)
-    normalized = absolute_path.replace("\\", "/")
-    return f"sqlite:///{normalized}"
+def _as_turso_sqlalchemy_uri(turso_database_url: str) -> str:
+    parsed = urlsplit(turso_database_url)
+    if parsed.scheme not in {"libsql", "https", "http"} or not parsed.netloc:
+        raise ValueError("TURSO_DATABASE_URL deve usar libsql://, https:// ou http://.")
 
-
-def _default_sqlite_path() -> str:
-    if os.getenv("VERCEL"):
-        return os.path.join("/tmp", "app.db")
-    return os.path.join("instance", "app.db")
+    query = dict(parse_qsl(parsed.query, keep_blank_values=True))
+    query.setdefault("secure", "true" if parsed.scheme in {"libsql", "https"} else "false")
+    path = parsed.path or ""
+    query_string = urlencode(query)
+    uri = f"sqlite+libsql://{parsed.netloc}{path}"
+    if query_string:
+        uri = f"{uri}?{query_string}"
+    return uri
 
 
 def _resolve_database_settings():
@@ -45,17 +49,15 @@ def _resolve_database_settings():
             "Projeto configurado para Turso-only. Defina TURSO_DATABASE_URL e TURSO_AUTH_TOKEN."
         )
 
-    turso_local_db_path = os.getenv("TURSO_LOCAL_DB_PATH", _default_sqlite_path())
-    os.makedirs(os.path.dirname(os.path.abspath(turso_local_db_path)), exist_ok=True)
-
     return {
-        "db_uri": _as_sqlite_uri(turso_local_db_path),
-        "engine_options": {"pool_pre_ping": True},
+        "db_uri": _as_turso_sqlalchemy_uri(turso_database_url),
+        "engine_options": {
+            "pool_pre_ping": True,
+            "connect_args": {"auth_token": turso_auth_token},
+        },
         "turso_enabled": True,
         "turso_database_url": turso_database_url,
         "turso_auth_token": turso_auth_token,
-        "turso_local_db_path": turso_local_db_path,
-        "turso_sync_interval_seconds": _get_int_env("TURSO_SYNC_INTERVAL_SECONDS", 0),
     }
 
 
@@ -73,8 +75,6 @@ class Config:
     TURSO_ENABLED = _DATABASE_SETTINGS["turso_enabled"]
     TURSO_DATABASE_URL = _DATABASE_SETTINGS["turso_database_url"]
     TURSO_AUTH_TOKEN = _DATABASE_SETTINGS["turso_auth_token"]
-    TURSO_LOCAL_DB_PATH = _DATABASE_SETTINGS["turso_local_db_path"]
-    TURSO_SYNC_INTERVAL_SECONDS = _DATABASE_SETTINGS["turso_sync_interval_seconds"]
     CRON_SECRET = os.getenv("CRON_SECRET")
 
     COINGECKO_API_KEY = os.getenv("COINGECKO_API_KEY")
@@ -89,5 +89,3 @@ class Config:
     PERMANENT_SESSION_LIFETIME = timedelta(
         hours=_get_int_env("SESSION_LIFETIME_HOURS", 12)
     )
-
-    TURSO_PUSH_AFTER_WRITE = _get_bool_env("TURSO_PUSH_AFTER_WRITE", True)
