@@ -465,6 +465,7 @@
         const activeEmpty = document.getElementById('active-empty');
         const activeTbody = document.getElementById('active-tbody');
         const activeRowTpl = document.getElementById('active-row-template');
+        const selectedPortfolioIdFromUrl = new URLSearchParams(window.location.search).get('selected_portfolio_id');
         const txnCard = document.getElementById('txn-card');
         const txnEmpty = document.getElementById('txn-empty');
         const txnTbody = document.getElementById('txn-tbody');
@@ -692,7 +693,10 @@
         }
         // Seleciona automaticamente o primeiro portfólio ao carregar
         if (portfolioButtons.length > 0) {
-            portfolioButtons[0].click();
+            const selectedPortfolioButton = selectedPortfolioIdFromUrl
+                ? document.querySelector(`[data-portfolio-id="${selectedPortfolioIdFromUrl}"]`)
+                : null;
+            (selectedPortfolioButton || portfolioButtons[0]).click();
         }
         if (spClose) {
         spClose.addEventListener('click', () => { 

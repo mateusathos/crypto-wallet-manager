@@ -144,7 +144,12 @@ def create_portfolio():
     db.session.commit()
 
     flash("Portfólio criado com sucesso", "success")
-    return redirect(url_for("portfolio.portfolio"))
+    return redirect(
+        url_for(
+            "portfolio.portfolio",
+            selected_portfolio_id=portfolio.id,
+        )
+    )
 
 
 @portfolio_bp.route("/transactions/create", methods=["POST"])
