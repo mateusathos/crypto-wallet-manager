@@ -522,6 +522,25 @@
             }
         }
 
+        function setButtonLoading(button, isLoading, label = 'Processando') {
+            if (!button) return;
+            if (isLoading) {
+                button.dataset.originalContent = button.innerHTML;
+                button.disabled = true;
+                button.classList.add('opacity-80', 'cursor-wait');
+                button.innerHTML = `<span class="app-spinner" aria-hidden="true"></span><span class="ml-2">${label}</span>`;
+                return;
+            }
+
+            if (button.dataset.originalContent) {
+                button.innerHTML = button.dataset.originalContent;
+                delete button.dataset.originalContent;
+            }
+            button.disabled = false;
+            button.classList.remove('opacity-80', 'cursor-wait');
+            renderLucideIcons();
+        }
+
         function renderActives(actives) {
             // Oculta/limpa estados
             activeCard.classList.add('hidden');
@@ -555,12 +574,19 @@
                     if (!currentPortfolioId) return;
                     if (!a.cryptocurrency_id) return;
                     if (!confirm(`Excluir ativo ${a.symbol}? Todas as transações serão removidas.`)) return;
-                    const resp = await fetch(`/portfolio/${currentPortfolioId}/asset/${a.cryptocurrency_id}/delete`, {
-                        method: 'POST',
-                        headers: { 'X-CSRF-Token': csrfToken },
-                    });
-                    if (resp.ok) {
-                        location.href = '/portfolio';
+                    setButtonLoading(delBtn, true, 'Excluindo');
+                    try {
+                        const resp = await fetch(`/portfolio/${currentPortfolioId}/asset/${a.cryptocurrency_id}/delete`, {
+                            method: 'POST',
+                            headers: { 'X-CSRF-Token': csrfToken },
+                        });
+                        if (resp.ok) {
+                            location.href = '/portfolio';
+                            return;
+                        }
+                        setButtonLoading(delBtn, false);
+                    } catch (_error) {
+                        setButtonLoading(delBtn, false);
                     }
                 });
 
@@ -608,12 +634,19 @@
                 const editBtn = row.querySelector('[data-action="edit-txn"]');
                 delBtn.addEventListener('click', async () => {
                     if (!confirm('Excluir esta transação?')) return;
-                    const resp = await fetch(`/transactions/${t.id}/delete`, {
-                        method: 'POST',
-                        headers: { 'X-CSRF-Token': csrfToken },
-                    });
-                    if (resp.ok) {
-                        location.href = '/portfolio';
+                    setButtonLoading(delBtn, true, 'Excluindo');
+                    try {
+                        const resp = await fetch(`/transactions/${t.id}/delete`, {
+                            method: 'POST',
+                            headers: { 'X-CSRF-Token': csrfToken },
+                        });
+                        if (resp.ok) {
+                            location.href = '/portfolio';
+                            return;
+                        }
+                        setButtonLoading(delBtn, false);
+                    } catch (_error) {
+                        setButtonLoading(delBtn, false);
                     }
                 });
 
@@ -623,22 +656,29 @@
                     etQtdInput.value = t.quantity;
                     etDateInput.value = t.date;
                     confirmEditBtn.onclick = async () => {
+                        setButtonLoading(confirmEditBtn, true, 'Editando');
                         const data = {
                             type: t.type,
                             price: parseFloat(etPriceInput.value),
                             quantity: parseFloat(etQtdInput.value),
                             date: etDateInput.value,
                         };
-                        const resp = await fetch(`/transactions/${t.id}/edit`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'X-CSRF-Token': csrfToken,
-                            },
-                            body: JSON.stringify(data),
-                        });
-                        if (resp.ok) {
-                            location.href = '/portfolio';
+                        try {
+                            const resp = await fetch(`/transactions/${t.id}/edit`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRF-Token': csrfToken,
+                                },
+                                body: JSON.stringify(data),
+                            });
+                            if (resp.ok) {
+                                location.href = '/portfolio';
+                                return;
+                            }
+                            setButtonLoading(confirmEditBtn, false);
+                        } catch (_error) {
+                            setButtonLoading(confirmEditBtn, false);
                         }
                     };
                 });
@@ -697,12 +737,19 @@
         headerDeleteBtn.addEventListener('click', async () => {
             if (!currentPortfolioId) return;
             if (!confirm('Excluir este portfólio e todas as suas transações?')) return;
-            const resp = await fetch(`/portfolio/${currentPortfolioId}/delete`, {
-                method: 'POST',
-                headers: { 'X-CSRF-Token': csrfToken },
-            });
-            if (resp.ok) {
-                location.href = '/portfolio';
+            setButtonLoading(headerDeleteBtn, true, 'Excluindo');
+            try {
+                const resp = await fetch(`/portfolio/${currentPortfolioId}/delete`, {
+                    method: 'POST',
+                    headers: { 'X-CSRF-Token': csrfToken },
+                });
+                if (resp.ok) {
+                    location.href = '/portfolio';
+                    return;
+                }
+                setButtonLoading(headerDeleteBtn, false);
+            } catch (_error) {
+                setButtonLoading(headerDeleteBtn, false);
             }
         });
         }

@@ -1,4 +1,20 @@
 <script src="https://unpkg.com/lucide@latest"></script>
+<style>
+    .app-spinner {
+        width: 1rem;
+        height: 1rem;
+        border: 2px solid currentColor;
+        border-right-color: transparent;
+        border-radius: 9999px;
+        animation: app-spin 0.7s linear infinite;
+    }
+
+    @keyframes app-spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+</style>
 <header class="sticky top-0 z-40 bg-slate-950/80 backdrop-blur border-b border-slate-800">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex items-center justify-between h-16">
@@ -74,6 +90,23 @@
 
         renderLucideIcons();
         document.addEventListener('DOMContentLoaded', renderLucideIcons);
+        document.addEventListener('submit', (event) => {
+            const form = event.target;
+            if (!(form instanceof HTMLFormElement) || form.dataset.loadingHandled === 'true') {
+                return;
+            }
+
+            const submitButton = form.querySelector('button[type="submit"]');
+            if (!submitButton) {
+                return;
+            }
+
+            form.dataset.loadingHandled = 'true';
+            submitButton.disabled = true;
+            submitButton.classList.add('opacity-80', 'cursor-wait');
+            submitButton.dataset.originalContent = submitButton.innerHTML;
+            submitButton.innerHTML = '<span class="app-spinner" aria-hidden="true"></span><span class="ml-2">Processando</span>';
+        });
 
         const menuButton = document.getElementById('mobile-menu-button');
         const mobileMenu = document.getElementById('mobile-menu');
