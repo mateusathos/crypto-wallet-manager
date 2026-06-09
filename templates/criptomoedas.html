@@ -57,7 +57,7 @@
                             <td class="px-4 py-3">
                                 <div class="flex items-center gap-3 min-w-[180px]">
                                 {% if crypto.image_url %}
-                                <img src="{{ crypto.image_url }}" width="32" alt="Logo de {{ crypto.name }}">
+                                <img src="{{ crypto.image_url }}" alt="Logo de {{ crypto.name }}" class="w-8 h-8 rounded-full object-cover bg-slate-800">
                                 {% else %}
                                 <div class="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-xs font-semibold">
                                     {{ crypto.symbol[:3]|upper }}
