@@ -300,6 +300,236 @@ def update_remote_cryptocurrency_prices(
         remote_conn.close()
 
 
+def _remote_execute_transaction(
+    turso_database_url: str,
+    turso_auth_token: str,
+    statements: list[tuple[str, tuple]],
+):
+    if libsql is None:
+        raise RuntimeError(
+            "Pacote 'libsql' não está instalado. Rode: pip install libsql"
+        )
+    if not statements:
+        return
+
+    remote_conn = libsql.connect(turso_database_url, auth_token=turso_auth_token)
+    try:
+        for statement, params in statements:
+            remote_conn.execute(statement, params)
+        remote_conn.commit()
+    finally:
+        remote_conn.close()
+
+
+def _date_value(value):
+    if hasattr(value, "isoformat"):
+        return value.isoformat()
+    return value
+
+
+def _remote_value(value):
+    if hasattr(value, "isoformat"):
+        return value.isoformat()
+    if value is None:
+        return None
+    return str(value)
+
+
+def create_remote_portfolio(turso_database_url: str, turso_auth_token: str, portfolio):
+    _remote_execute_transaction(
+        turso_database_url,
+        turso_auth_token,
+        [
+            (
+                """
+                INSERT INTO portfolios (id, name, icon, user_id)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    name = excluded.name,
+                    icon = excluded.icon,
+                    user_id = excluded.user_id
+                """,
+                (portfolio.id, portfolio.name, portfolio.icon, portfolio.user_id),
+            )
+        ],
+    )
+
+
+def update_remote_portfolio(turso_database_url: str, turso_auth_token: str, portfolio):
+    _remote_execute_transaction(
+        turso_database_url,
+        turso_auth_token,
+        [
+            (
+                """
+                UPDATE portfolios
+                SET name = ?, icon = ?
+                WHERE id = ? AND user_id = ?
+                """,
+                (portfolio.name, portfolio.icon, portfolio.id, portfolio.user_id),
+            )
+        ],
+    )
+
+
+def delete_remote_portfolio(
+    turso_database_url: str,
+    turso_auth_token: str,
+    portfolio_id: int,
+    user_id: int,
+):
+    _remote_execute_transaction(
+        turso_database_url,
+        turso_auth_token,
+        [
+            (
+                """
+                DELETE FROM transactions
+                WHERE portfolio_id IN (
+                    SELECT id FROM portfolios WHERE id = ? AND user_id = ?
+                )
+                """,
+                (portfolio_id, user_id),
+            ),
+            (
+                "DELETE FROM portfolios WHERE id = ? AND user_id = ?",
+                (portfolio_id, user_id),
+            ),
+        ],
+    )
+
+
+def create_remote_transaction(
+    turso_database_url: str,
+    turso_auth_token: str,
+    transaction,
+):
+    _remote_execute_transaction(
+        turso_database_url,
+        turso_auth_token,
+        [
+            (
+                """
+                INSERT INTO transactions (
+                    id,
+                    portfolio_id,
+                    cryptocurrency_id,
+                    quantity,
+                    price,
+                    fee,
+                    type,
+                    transaction_date
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    portfolio_id = excluded.portfolio_id,
+                    cryptocurrency_id = excluded.cryptocurrency_id,
+                    quantity = excluded.quantity,
+                    price = excluded.price,
+                    fee = excluded.fee,
+                    type = excluded.type,
+                    transaction_date = excluded.transaction_date
+                """,
+                (
+                    transaction.id,
+                    transaction.portfolio_id,
+                    transaction.cryptocurrency_id,
+                    _remote_value(transaction.quantity),
+                    _remote_value(transaction.price),
+                    _remote_value(transaction.fee or 0),
+                    transaction.type,
+                    _date_value(transaction.transaction_date),
+                ),
+            )
+        ],
+    )
+
+
+def update_remote_transaction(
+    turso_database_url: str,
+    turso_auth_token: str,
+    transaction,
+    user_id: int,
+):
+    _remote_execute_transaction(
+        turso_database_url,
+        turso_auth_token,
+        [
+            (
+                """
+                UPDATE transactions
+                SET quantity = ?,
+                    price = ?,
+                    type = ?,
+                    transaction_date = ?
+                WHERE id = ?
+                  AND portfolio_id IN (
+                      SELECT id FROM portfolios WHERE user_id = ?
+                  )
+                """,
+                (
+                    _remote_value(transaction.quantity),
+                    _remote_value(transaction.price),
+                    transaction.type,
+                    _date_value(transaction.transaction_date),
+                    transaction.id,
+                    user_id,
+                ),
+            )
+        ],
+    )
+
+
+def delete_remote_transaction(
+    turso_database_url: str,
+    turso_auth_token: str,
+    transaction_id: int,
+    user_id: int,
+):
+    _remote_execute_transaction(
+        turso_database_url,
+        turso_auth_token,
+        [
+            (
+                """
+                DELETE FROM transactions
+                WHERE id = ?
+                  AND portfolio_id IN (
+                      SELECT id FROM portfolios WHERE user_id = ?
+                  )
+                """,
+                (transaction_id, user_id),
+            )
+        ],
+    )
+
+
+def delete_remote_asset_transactions(
+    turso_database_url: str,
+    turso_auth_token: str,
+    portfolio_id: int,
+    user_id: int,
+    cryptocurrency_id: int,
+):
+    _remote_execute_transaction(
+        turso_database_url,
+        turso_auth_token,
+        [
+            (
+                """
+                DELETE FROM transactions
+                WHERE portfolio_id = ?
+                  AND cryptocurrency_id = ?
+                  AND portfolio_id IN (
+                      SELECT id FROM portfolios WHERE user_id = ?
+                  )
+                """,
+                (portfolio_id, cryptocurrency_id, user_id),
+            )
+        ],
+    )
+
+
 def init_turso_sync(app):
     if not app.config.get("TURSO_ENABLED", False):
         return None

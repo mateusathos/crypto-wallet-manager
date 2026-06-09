@@ -8,6 +8,8 @@ from unittest.mock import patch
 from services.turso_service import (
     _push_local_snapshot,
     _upsert_local_snapshot,
+    create_remote_transaction,
+    delete_remote_portfolio,
     update_remote_cryptocurrency_prices,
 )
 
@@ -201,6 +203,53 @@ class TursoServiceTests(unittest.TestCase):
                 "2026-06-08 12:30:00.000000",
                 "bitcoin",
             ),
+        )
+        self.assertTrue(fake_libsql.connection.committed)
+        self.assertTrue(fake_libsql.connection.closed)
+
+    def test_delete_remote_portfolio_deletes_transactions_then_portfolio_for_user(self):
+        fake_libsql = _FakeLibsqlModule()
+        with patch("services.turso_service.libsql", fake_libsql):
+            delete_remote_portfolio(
+                turso_database_url="libsql://example.turso.io",
+                turso_auth_token="token",
+                portfolio_id=10,
+                user_id=2,
+            )
+
+        statements = fake_libsql.connection.statements
+        self.assertEqual(len(statements), 2)
+        self.assertIn("DELETE FROM transactions", statements[0][0])
+        self.assertEqual(statements[0][1], (10, 2))
+        self.assertIn("DELETE FROM portfolios", statements[1][0])
+        self.assertEqual(statements[1][1], (10, 2))
+        self.assertTrue(fake_libsql.connection.committed)
+        self.assertTrue(fake_libsql.connection.closed)
+
+    def test_create_remote_transaction_serializes_decimal_values(self):
+        class _Transaction:
+            id = 7
+            portfolio_id = 10
+            cryptocurrency_id = 3
+            quantity = "0.5"
+            price = "123.45"
+            fee = 0
+            type = "compra"
+            transaction_date = datetime(2026, 6, 9).date()
+
+        fake_libsql = _FakeLibsqlModule()
+        with patch("services.turso_service.libsql", fake_libsql):
+            create_remote_transaction(
+                turso_database_url="libsql://example.turso.io",
+                turso_auth_token="token",
+                transaction=_Transaction(),
+            )
+
+        statement, params = fake_libsql.connection.statements[0]
+        self.assertIn("INSERT INTO transactions", statement)
+        self.assertEqual(
+            params,
+            (7, 10, 3, "0.5", "123.45", "0", "compra", "2026-06-09"),
         )
         self.assertTrue(fake_libsql.connection.committed)
         self.assertTrue(fake_libsql.connection.closed)

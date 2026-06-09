@@ -71,8 +71,7 @@ def create_app():
 
     @app.before_request
     def ensure_session_and_csrf():
-        if request.method not in {"POST", "PUT", "PATCH", "DELETE"}:
-            sync_now(app)
+        sync_now(app)
         if "csrf_token" not in session:
             session["csrf_token"] = secrets.token_urlsafe(32)
         session.permanent = True

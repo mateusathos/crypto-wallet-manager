@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-from flask import Blueprint, jsonify, request, session
+from flask import Blueprint, current_app, jsonify, request, session
 from sqlalchemy import case, desc, func
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
@@ -11,6 +11,14 @@ from models import Cryptocurrency, Portfolio, Transaction
 from routes.api_helpers import api_error, login_required_json
 from services.portfolio_icons import normalize_portfolio_icon
 from services.portfolio_service import get_portfolio_summaries
+from services.turso_service import (
+    create_remote_portfolio,
+    create_remote_transaction,
+    delete_remote_portfolio,
+    delete_remote_transaction,
+    update_remote_portfolio,
+    update_remote_transaction,
+)
 
 
 api_portfolios_bp = Blueprint(
@@ -169,6 +177,12 @@ def create_portfolio():
     )
 
     db.session.add(portfolio)
+    db.session.flush()
+    create_remote_portfolio(
+        current_app.config["TURSO_DATABASE_URL"],
+        current_app.config["TURSO_AUTH_TOKEN"],
+        portfolio,
+    )
     db.session.commit()
 
     summary = {
@@ -245,6 +259,12 @@ def create_transaction():
     )
 
     db.session.add(transaction)
+    db.session.flush()
+    create_remote_transaction(
+        current_app.config["TURSO_DATABASE_URL"],
+        current_app.config["TURSO_AUTH_TOKEN"],
+        transaction,
+    )
     db.session.commit()
 
     return jsonify({
@@ -277,6 +297,12 @@ def delete_transaction(transaction_id: int):
     if not transaction:
         return api_error("Transação não encontrada.", 404)
 
+    delete_remote_transaction(
+        current_app.config["TURSO_DATABASE_URL"],
+        current_app.config["TURSO_AUTH_TOKEN"],
+        transaction_id=transaction_id,
+        user_id=session["user_id"],
+    )
     db.session.delete(transaction)
     db.session.commit()
 
@@ -373,6 +399,12 @@ def update_transaction(transaction_id: int):
     transaction.quantity = quantity
     transaction.price = price
     transaction.transaction_date = transaction_date
+    update_remote_transaction(
+        current_app.config["TURSO_DATABASE_URL"],
+        current_app.config["TURSO_AUTH_TOKEN"],
+        transaction,
+        user_id=session["user_id"],
+    )
 
     db.session.commit()
 
@@ -401,6 +433,12 @@ def delete_portfolio(portfolio_id: int):
     if not portfolio:
         return api_error("Portfólio não encontrado.", 404)
 
+    delete_remote_portfolio(
+        current_app.config["TURSO_DATABASE_URL"],
+        current_app.config["TURSO_AUTH_TOKEN"],
+        portfolio_id=portfolio.id,
+        user_id=session["user_id"],
+    )
     Transaction.query.filter_by(portfolio_id=portfolio.id).delete()
     db.session.delete(portfolio)
     db.session.commit()
@@ -431,6 +469,11 @@ def update_portfolio(portfolio_id: int):
 
     portfolio.name = name
     portfolio.icon = icon
+    update_remote_portfolio(
+        current_app.config["TURSO_DATABASE_URL"],
+        current_app.config["TURSO_AUTH_TOKEN"],
+        portfolio,
+    )
     db.session.commit()
 
     summary = get_portfolio_summaries([portfolio.id]).get(portfolio.id, {})
