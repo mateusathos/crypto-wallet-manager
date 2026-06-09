@@ -195,6 +195,19 @@ Criar portfólio:
 }
 ```
 
+`icon` aceita estes valores:
+
+- `wallet`
+- `trending-up`
+- `shield`
+- `rocket`
+- `coins`
+- `target`
+- `bitcoin`
+- `gem`
+
+Quando o valor enviado não é reconhecido, a API faz fallback para `wallet`.
+
 Resposta resumida:
 
 ```json
