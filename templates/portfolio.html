@@ -7,6 +7,7 @@
         <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
         <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+        <script src="https://unpkg.com/lucide@latest"></script>
         <style>
             /* Select2 dark style tweaks to match the UI */
             .select2-container--default .select2-selection--single {
@@ -62,7 +63,9 @@
             </section>
             <section class="max-w-2xl mx-auto">
                 <div class="rounded-xl border border-slate-800 bg-slate-900/40 p-5 sm:p-8 text-center">
-                    <div class="mx-auto mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-slate-800 text-indigo-400">₿</div>
+                    <div class="mx-auto mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-slate-800 text-indigo-400">
+                        <i data-lucide="wallet" class="h-6 w-6"></i>
+                    </div>
                     <h2 class="text-xl font-semibold text-white">Crie seu primeiro portfólio</h2>
                     <p class="mt-2 text-slate-300">Organize suas criptomoedas por objetivos e acompanhe a evolução do seu patrimônio.</p>
 
@@ -85,11 +88,15 @@
                         <button type="button" class="cursor-pointer text-left w-full rounded-xl border border-slate-800 bg-slate-900/40 py-3 px-4 sm:px-6 hover:bg-slate-800/50 transition-colors"
                             data-portfolio-id="{{ portfolio.id }}" 
                             data-portfolio-name="{{ portfolio.name }}"
+                            data-portfolio-icon="{{ portfolio.icon or default_portfolio_icon }}"
                             data-portfolio-cost="{{ portfolio.cost }}" 
                             data-portfolio-value="{{ portfolio.value }}"
                             data-portfolio-profit="{{ portfolio.profit }}"
                             data-portfolio-profit_percentage="{{ portfolio.profit_percentage }}">
-                            <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <span class="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-slate-800 text-indigo-300">
+                                    <i data-lucide="{{ portfolio.icon or default_portfolio_icon }}" class="h-5 w-5"></i>
+                                </span>
                                 <h3 class="text-lg font-semibold text-white break-all">{{ portfolio.name or 'Meu Portfólio' }}</h3>
                             </div>
                         </button>
@@ -106,10 +113,15 @@
                 <section id="selected-portfolio" class="hidden w-full h-full">
                     <div class="rounded-xl border border-slate-800 bg-slate-900/40 p-4 sm:p-6">
                         <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                            <div>
+                            <div class="flex items-start gap-3">
+                                <span id="sp-icon" class="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-800 text-indigo-300">
+                                    <i data-lucide="wallet" class="h-6 w-6"></i>
+                                </span>
+                                <div>
                                 <h3 id="sp-name" class="text-xl font-semibold text-white"></h3>
                                 <p id="sp-id" class="text-slate-400 text-sm"></p>
                                 <p id="sp-value" class="text-slate-200 font-semibold text-2xl sm:text-3xl">—</p>
+                                </div>
                             </div>
 
                             <div class="flex flex-wrap gap-2 sm:gap-3">
@@ -260,6 +272,30 @@
                         <input id="name" name="name" type="text" required minlength="1" maxlength="50"
                                class="w-full rounded-md bg-slate-900 border border-slate-700 text-slate-100 placeholder-slate-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                placeholder="Ex.: Longo prazo">
+                    </div>
+
+                    <div class="space-y-2">
+                        <p class="block text-sm text-slate-300">Ícone</p>
+                        <div class="grid grid-cols-4 gap-2">
+                            {% for icon in portfolio_icon_options %}
+                                <label class="cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        name="icon"
+                                        value="{{ icon.name }}"
+                                        class="peer sr-only"
+                                        {% if icon.name == default_portfolio_icon %}checked{% endif %}
+                                    >
+                                    <span
+                                        class="flex h-14 flex-col items-center justify-center gap-1 rounded-md border border-slate-700 bg-slate-900 text-slate-300 transition-colors hover:bg-slate-800 hover:text-slate-100 peer-checked:border-indigo-500 peer-checked:bg-indigo-600/20 peer-checked:text-indigo-200"
+                                        title="{{ icon.label }}"
+                                    >
+                                        <i data-lucide="{{ icon.name }}" class="h-5 w-5"></i>
+                                        <span class="text-[10px] leading-none">{{ icon.label }}</span>
+                                    </span>
+                                </label>
+                            {% endfor %}
+                        </div>
                     </div>
 
                     <div class="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-3">
@@ -414,6 +450,7 @@
 
         // Painel de detalhes do portfólio
         const sp = document.getElementById('selected-portfolio');
+        const spIcon = document.getElementById('sp-icon');
         const spName = document.getElementById('sp-name');
         const spId = document.getElementById('sp-id');
         const spClose = document.getElementById('sp-close');
@@ -463,6 +500,12 @@
                 return `+${num.toFixed(2).replace(".", ",")}%`
             }
             return `${num.toFixed(2).replace(".", ",")}%`
+        }
+
+        function renderLucideIcons() {
+            if (window.lucide) {
+                window.lucide.createIcons();
+            }
         }
 
         function renderActives(actives) {
@@ -596,10 +639,12 @@
             btn.addEventListener('click', () => {
                 currentPortfolioId = btn.getAttribute('data-portfolio-id');
                 const name = btn.getAttribute('data-portfolio-name');
+                const icon = btn.getAttribute('data-portfolio-icon') || 'wallet';
                 const cost = btn.getAttribute('data-portfolio-cost');
                 const value = btn.getAttribute('data-portfolio-value');
                 const profit = btn.getAttribute('data-portfolio-profit');
                 const profitPercentage = Number(btn.getAttribute('data-portfolio-profit_percentage'));
+                spIcon.innerHTML = `<i data-lucide="${icon}" class="h-6 w-6"></i>`;
                 spName.textContent = name;
                 spId.textContent = `ID: ${currentPortfolioId}`;
                 spCost.textContent = formatBRL(cost);
@@ -616,6 +661,7 @@
                     spProfit.classList.add("text-white")
                     spProfit_percentage.classList.add("text-white")
                 }
+                renderLucideIcons();
                 const jsonEl = document.getElementById(`portfolio-actives-${currentPortfolioId}`);
                 const actives = jsonEl ? JSON.parse(jsonEl.textContent) : [];
                 renderActives(actives);
@@ -631,6 +677,7 @@
             });
         });
         // Delete portfolio (header button)
+        if (headerDeleteBtn) {
         headerDeleteBtn.addEventListener('click', async () => {
             if (!currentPortfolioId) return;
             if (!confirm('Excluir este portfólio e todas as suas transações?')) return;
@@ -642,15 +689,18 @@
                 location.href = '/portfolio';
             }
         });
+        }
         // Seleciona automaticamente o primeiro portfólio ao carregar
         if (portfolioButtons.length > 0) {
             portfolioButtons[0].click();
         }
+        if (spClose) {
         spClose.addEventListener('click', () => { 
             sp.classList.add('hidden'); 
             if (selectedBtn) { selectedBtn.classList.remove('!bg-slate-800/80'); }
             selectedBtn = null;
         });
+        }
 
         // Modal: Nova Transação
         const ntModal = document.getElementById('new-transaction-modal');
@@ -735,6 +785,7 @@
                 closeEtModal();
             }
         });
+        renderLucideIcons();
     })();
     </script>
 

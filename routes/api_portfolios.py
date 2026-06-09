@@ -9,6 +9,7 @@ from typing import Optional
 from extensions import db
 from models import Cryptocurrency, Portfolio, Transaction
 from routes.api_helpers import api_error, login_required_json
+from services.portfolio_icons import normalize_portfolio_icon
 from services.portfolio_service import get_portfolio_summaries
 
 
@@ -40,6 +41,7 @@ def _portfolio_payload(portfolio: Portfolio, summary: dict, transactions: list):
     return {
         "id": portfolio.id,
         "name": portfolio.name,
+        "icon": portfolio.icon,
         "summary": {
             "actives": summary.get("actives", []),
             "cost": summary.get("cost", 0.0),
@@ -162,6 +164,7 @@ def create_portfolio():
 
     portfolio = Portfolio(
         name=name,
+        icon=normalize_portfolio_icon(data.get("icon")),
         user_id=session["user_id"],
     )
 
@@ -417,15 +420,17 @@ def update_portfolio(portfolio_id: int):
         return api_error("Portfólio não encontrado.", 404)
 
     data = request.get_json(silent=True) or {}
-    name = (data.get("name") or "").strip()
+    name = (data.get("name") or portfolio.name).strip()
+    icon = normalize_portfolio_icon(data.get("icon", portfolio.icon))
 
     if not name:
         return api_error("Nome do portfólio é obrigatório.")
 
-    if name == portfolio.name:
+    if name == portfolio.name and icon == portfolio.icon:
         return api_error("Nenhuma alteração informada.")
 
     portfolio.name = name
+    portfolio.icon = icon
     db.session.commit()
 
     summary = get_portfolio_summaries([portfolio.id]).get(portfolio.id, {})

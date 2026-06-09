@@ -30,6 +30,7 @@ class Portfolio(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(50), default="Meu Portfólio")
+    icon = db.Column(db.String(50), nullable=False, default="wallet")
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
 
 

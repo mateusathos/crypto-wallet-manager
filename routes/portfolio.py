@@ -8,6 +8,11 @@ from sqlalchemy import case, func
 
 from extensions import db
 from models import Cryptocurrency, Portfolio, Transaction
+from services.portfolio_icons import (
+    DEFAULT_PORTFOLIO_ICON,
+    PORTFOLIO_ICON_OPTIONS,
+    normalize_portfolio_icon,
+)
 from services.portfolio_service import get_portfolio_summaries
 
 portfolio_bp = Blueprint("portfolio", __name__)
@@ -113,7 +118,13 @@ def portfolio():
         portfolio.profit_percentage = summary.get("profit_percentage", 0.0)
         portfolio.transactions = tx_by_portfolio.get(portfolio.id, [])
 
-    return render_template("portfolio.html", portfolios=portfolios, cryptos=cryptos)
+    return render_template(
+        "portfolio.html",
+        portfolios=portfolios,
+        cryptos=cryptos,
+        default_portfolio_icon=DEFAULT_PORTFOLIO_ICON,
+        portfolio_icon_options=PORTFOLIO_ICON_OPTIONS,
+    )
 
 
 @portfolio_bp.route("/portfolio/create", methods=["POST"])
@@ -126,7 +137,9 @@ def create_portfolio():
     if not name:
         name = "Meu Portfólio"
 
-    portfolio = Portfolio(name=name, user_id=session["user_id"])
+    icon = normalize_portfolio_icon(request.form.get("icon"))
+
+    portfolio = Portfolio(name=name, icon=icon, user_id=session["user_id"])
     db.session.add(portfolio)
     db.session.commit()
 
