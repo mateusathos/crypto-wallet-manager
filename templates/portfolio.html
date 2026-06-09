@@ -4,27 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-        <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
         <style>
-            /* Select2 dark style tweaks to match the UI */
-            .select2-container--default .select2-selection--single {
-                background-color: #0f172a; /* slate-900 */
-                border: 1px solid #334155; /* slate-700 */
-                color: #e2e8f0; /* slate-200 */
-                height: 40px;
-            }
-            .select2-container--default .select2-selection--single .select2-selection__rendered {
-                color: #e2e8f0;
-                line-height: 38px;
-                padding-left: 8px;
-            }
-            .select2-container--default .select2-selection--single .select2-selection__arrow { height: 38px; }
-            .select2-dropdown { background-color: #0b1220; border-color: #334155; }
-            .select2-results__option { color: #e2e8f0; }
-            .select2-results__option--highlighted { background-color: #1f2937; }
-            .select2-search__field { background-color: #0f172a; color: #e2e8f0; border-color: #334155; }
+            .crypto-picker-item { transition: background-color 150ms ease, border-color 150ms ease, transform 150ms ease; }
+            .crypto-picker-item:hover { transform: translateY(-1px); }
 
             /* Date input calendar icon white (WebKit) */
             input[type="date"]::-webkit-calendar-picker-indicator {
@@ -316,6 +298,63 @@
         </div>
     </div>
 
+    <!-- Modal: Escolher Ativo -->
+    <div id="crypto-picker-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-slate-950/70 backdrop-blur-sm" data-close-crypto-picker></div>
+        <div class="relative z-10 mx-auto flex min-h-screen w-full items-center p-4">
+            <div class="mx-auto flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-slate-800 bg-slate-900 shadow-xl">
+                <div class="flex items-start justify-between border-b border-slate-800 px-6 py-5">
+                    <div>
+                        <h3 class="text-xl font-semibold text-white">Escolher ativo</h3>
+                        <p class="text-sm text-slate-400">Selecione a criptomoeda antes de informar a transação.</p>
+                    </div>
+                    <button type="button" class="cursor-pointer text-slate-400 hover:text-slate-200" aria-label="Fechar" data-close-crypto-picker>
+                        <i data-lucide="x" class="h-5 w-5"></i>
+                    </button>
+                </div>
+
+                <div class="border-b border-slate-800 px-6 py-4">
+                    <div class="relative">
+                        <i data-lucide="search" class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500"></i>
+                        <input
+                            id="crypto-picker-search"
+                            type="search"
+                            placeholder="Buscar por nome ou sigla"
+                            class="w-full rounded-md border border-slate-700 bg-slate-950 py-2 pl-10 pr-3 text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        >
+                    </div>
+                </div>
+
+                <div id="crypto-picker-list" class="grid gap-3 overflow-y-auto px-6 py-5 sm:grid-cols-2">
+                    {% for crypto in cryptos %}
+                        <button
+                            type="button"
+                            class="crypto-picker-item cursor-pointer rounded-lg border border-slate-800 bg-slate-950/80 p-4 text-left hover:border-slate-700 hover:bg-slate-800/80"
+                            data-crypto-picker-item
+                            data-crypto-id="{{ crypto.id }}"
+                            data-crypto-name="{{ crypto.name }}"
+                            data-crypto-symbol="{{ crypto.symbol }}"
+                            data-crypto-image="{{ crypto.image_url }}"
+                            data-crypto-price="{{ crypto.current_price or 0 }}"
+                        >
+                            <div class="flex items-center gap-3">
+                                <img src="{{ crypto.image_url }}" alt="{{ crypto.name }}" class="h-10 w-10 rounded-full object-cover">
+                                <div class="min-w-0">
+                                    <p class="truncate font-semibold text-white">{{ crypto.name }}</p>
+                                    <p class="text-sm uppercase tracking-wide text-slate-400">{{ crypto.symbol }}</p>
+                                </div>
+                            </div>
+                        </button>
+                    {% endfor %}
+                </div>
+
+                <div id="crypto-picker-empty" class="hidden px-6 pb-6 text-sm text-slate-400">
+                    Nenhuma criptomoeda encontrada.
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal: Nova Transação -->
     <div id="new-transaction-modal" class="fixed inset-0 z-50 hidden">
         <div class="absolute inset-0 bg-slate-950/70 backdrop-blur-sm" data-close-new-transaction></div>
@@ -331,9 +370,27 @@
                     </button>
                 </div>
 
-                <form action="/transactions/create" method="POST" class="mt-6 space-y-4">
+                <form id="new-transaction-form" action="/transactions/create" method="POST" class="mt-6 space-y-4">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                     <input type="hidden" id="nt-portfolio-id" name="portfolio_id">
+                    <input type="hidden" id="cryptocurrency_id" name="cryptocurrency_id">
+                    <div class="space-y-2">
+                        <label class="block text-sm text-slate-300">Criptomoeda</label>
+                        <button
+                            type="button"
+                            id="nt-selected-crypto"
+                            class="flex w-full items-center justify-between rounded-md border border-slate-700 bg-slate-950 px-3 py-3 text-left hover:border-slate-600"
+                        >
+                            <span class="flex min-w-0 items-center gap-3">
+                                <img id="nt-selected-crypto-image" src="" alt="" class="hidden h-10 w-10 rounded-full object-cover">
+                                <span class="min-w-0">
+                                    <span id="nt-selected-crypto-name" class="block truncate font-medium text-slate-100">Escolher ativo</span>
+                                    <span id="nt-selected-crypto-symbol" class="block text-sm text-slate-400">Selecione uma criptomoeda</span>
+                                </span>
+                            </span>
+                            <i data-lucide="chevron-right" class="h-4 w-4 text-slate-500"></i>
+                        </button>
+                    </div>
                     <div class="space-y-2">
                         <label for="transaction_type" class="block text-sm text-slate-300">Tipo de transação</label>
                         <select id="transaction_type" name="transaction_type" class="w-full text-slate-200 rounded-md p-2 cursor-pointer border border-slate-700">
@@ -343,17 +400,6 @@
                             <option value="venda" class="bg-slate-900">
                                 <p>Venda</p>
                             </option>
-                        </select>
-                    </div>
-                    <div class="space-y-2">
-                        <label for="cryptocurrency_id" class="block text-sm text-slate-300">Criptomoeda</label>
-                        <select id="cryptocurrency_id" name="cryptocurrency_id" class="w-full bg-slate-800 text-slate-200 rounded-md p-2 cursor-pointer">
-                            {% for crypto in cryptos %}
-                                <option value="{{ crypto.id }}" data-current-price="{{ crypto.current_price or 0 }}">
-                                    <p>{{ crypto.name }}</p>
-                                    <p>({{ crypto.symbol }})</p>
-                                </option>
-                            {% endfor %}
                         </select>
                     </div>
 
@@ -774,49 +820,137 @@
         }
 
         // Modal: Nova Transação
+        const cpModal = document.getElementById('crypto-picker-modal');
+        const cpClosers = document.querySelectorAll('[data-close-crypto-picker]');
+        const cpSearch = document.getElementById('crypto-picker-search');
+        const cpItems = document.querySelectorAll('[data-crypto-picker-item]');
+        const cpEmpty = document.getElementById('crypto-picker-empty');
         const ntModal = document.getElementById('new-transaction-modal');
         const ntOpeners = document.querySelectorAll('[data-open-new-transaction]');
         const ntClosers = document.querySelectorAll('[data-close-new-transaction]');
         const ntPortfolioId = document.getElementById('nt-portfolio-id');
-        const ntCryptoSelect = document.getElementById('cryptocurrency_id');
+        const ntCryptoInput = document.getElementById('cryptocurrency_id');
+        const ntSelectedCrypto = document.getElementById('nt-selected-crypto');
+        const ntSelectedCryptoImage = document.getElementById('nt-selected-crypto-image');
+        const ntSelectedCryptoName = document.getElementById('nt-selected-crypto-name');
+        const ntSelectedCryptoSymbol = document.getElementById('nt-selected-crypto-symbol');
+        const ntForm = document.getElementById('new-transaction-form');
         const ntPriceInput = document.getElementById('price');
         const ntQtdInput = document.getElementById('quantity-input');
         const ntDateInput = document.getElementById('transaction_date');
-        function setDefaultPriceFromCrypto(evt) {
-            if (!ntCryptoSelect || !ntPriceInput) return;
-            let priceAttr = null;
-            // Prefer data from Select2 event when available
-            if (evt && evt.params && evt.params.data && evt.params.data.element) {
-                priceAttr = evt.params.data.element.getAttribute('data-current-price');
-            } else {
-                const opt = ntCryptoSelect.querySelector(`option[value="${ntCryptoSelect.value}"]`);
-                priceAttr = opt ? opt.getAttribute('data-current-price') : null;
-            }
-            const v = priceAttr ? parseFloat(priceAttr) : NaN;
+        let selectedCryptoMeta = null;
+
+        function setDefaultPriceFromCrypto(priceValue) {
+            if (!ntPriceInput) return;
+            const v = priceValue ? parseFloat(priceValue) : NaN;
             if (Number.isFinite(v) && v > 0) {
                 ntPriceInput.value = v;
             } else {
-                // keep current user input or clear if empty
                 if (!ntPriceInput.value) ntPriceInput.value = '';
             }
         }
-        if (ntCryptoSelect) {
-            ntCryptoSelect.addEventListener('change', setDefaultPriceFromCrypto);
+
+        function updateSelectedCrypto(meta) {
+            selectedCryptoMeta = meta;
+            if (ntCryptoInput) {
+                ntCryptoInput.value = meta?.id || '';
+            }
+            if (!ntSelectedCryptoName || !ntSelectedCryptoSymbol || !ntSelectedCryptoImage) return;
+            if (!meta) {
+                ntSelectedCryptoName.textContent = 'Escolher ativo';
+                ntSelectedCryptoSymbol.textContent = 'Selecione uma criptomoeda';
+                ntSelectedCryptoImage.classList.add('hidden');
+                ntSelectedCryptoImage.removeAttribute('src');
+                ntSelectedCryptoImage.removeAttribute('alt');
+                return;
+            }
+            ntSelectedCryptoName.textContent = meta.name;
+            ntSelectedCryptoSymbol.textContent = meta.symbol;
+            ntSelectedCryptoImage.src = meta.image;
+            ntSelectedCryptoImage.alt = meta.name;
+            ntSelectedCryptoImage.classList.remove('hidden');
+            setDefaultPriceFromCrypto(meta.price);
+            setValueSpent();
         }
-        // Initialize Select2 for searchable crypto dropdown
-        if (window.jQuery && ntCryptoSelect) {
-            jQuery(function($){
-                const $sel = $(ntCryptoSelect);
-                $sel.select2({
-                    width: '100%',
-                    dropdownParent: $('#new-transaction-modal'),
-                    placeholder: 'Selecione uma criptomoeda',
-                    minimumResultsForSearch: 0
-                });
-                // Update suggested price on Select2 selection
-                $sel.on('select2:select', (e) => setDefaultPriceFromCrypto(e));
+
+        function openCryptoPicker() {
+            if (!currentPortfolioId) return;
+            cpModal.classList.remove('hidden');
+            if (cpSearch) {
+                cpSearch.value = '';
+                filterCryptoPickerItems();
+                cpSearch.focus();
+            }
+        }
+
+        function closeCryptoPicker() {
+            cpModal.classList.add('hidden');
+        }
+
+        function openNt() {
+            if (!currentPortfolioId || !selectedCryptoMeta) return;
+            ntPortfolioId.value = currentPortfolioId;
+            ntModal.classList.remove('hidden');
+            if (ntDateInput) {
+                const today = new Date();
+                const yyyy = today.getFullYear();
+                const mm = String(today.getMonth() + 1).padStart(2, '0');
+                const dd = String(today.getDate()).padStart(2, '0');
+                ntDateInput.value = `${yyyy}-${mm}-${dd}`;
+            }
+            setDefaultPriceFromCrypto(selectedCryptoMeta.price);
+            setValueSpent();
+        }
+
+        function closeNt() {
+            ntModal.classList.add('hidden');
+        }
+
+        function filterCryptoPickerItems() {
+            const query = (cpSearch?.value || '').trim().toLowerCase();
+            let visibleCount = 0;
+            cpItems.forEach((item) => {
+                const name = (item.getAttribute('data-crypto-name') || '').toLowerCase();
+                const symbol = (item.getAttribute('data-crypto-symbol') || '').toLowerCase();
+                const matches = !query || name.includes(query) || symbol.includes(query);
+                item.classList.toggle('hidden', !matches);
+                if (matches) visibleCount += 1;
+            });
+            if (cpEmpty) {
+                cpEmpty.classList.toggle('hidden', visibleCount > 0);
+            }
+        }
+
+        cpClosers.forEach((button) => button.addEventListener('click', closeCryptoPicker));
+        cpItems.forEach((item) => {
+            item.addEventListener('click', () => {
+                const meta = {
+                    id: item.getAttribute('data-crypto-id'),
+                    name: item.getAttribute('data-crypto-name') || '',
+                    symbol: item.getAttribute('data-crypto-symbol') || '',
+                    image: item.getAttribute('data-crypto-image') || '',
+                    price: item.getAttribute('data-crypto-price') || '',
+                };
+                updateSelectedCrypto(meta);
+                closeCryptoPicker();
+                openNt();
+            });
+        });
+        if (cpSearch) {
+            cpSearch.addEventListener('input', filterCryptoPickerItems);
+        }
+        if (ntSelectedCrypto) {
+            ntSelectedCrypto.addEventListener('click', openCryptoPicker);
+        }
+        if (ntForm) {
+            ntForm.addEventListener('submit', (event) => {
+                if (ntCryptoInput && ntCryptoInput.value) return;
+                event.preventDefault();
+                closeNt();
+                openCryptoPicker();
             });
         }
+
         function setValueSpent() {
             if (!ntPriceInput || !ntQtdInput) return;
             const price = parseFloat(ntPriceInput.value) || 0;
@@ -831,27 +965,12 @@
         if (ntQtdInput) {
             ntQtdInput.addEventListener('input', setValueSpent);
         }
-        function openNt() {
-            if (!currentPortfolioId) return;
-            ntPortfolioId.value = currentPortfolioId;
-            ntModal.classList.remove('hidden');
-            // Default date to today (YYYY-MM-DD)
-            if (ntDateInput) {
-                const today = new Date();
-                const yyyy = today.getFullYear();
-                const mm = String(today.getMonth() + 1).padStart(2, '0');
-                const dd = String(today.getDate()).padStart(2, '0');
-                ntDateInput.value = `${yyyy}-${mm}-${dd}`;
-            }
-            setDefaultPriceFromCrypto();
-            setValueSpent();
-        }
-        function closeNt() { ntModal.classList.add('hidden'); }
-        ntOpeners.forEach(btn => btn.addEventListener('click', openNt));
+        ntOpeners.forEach(btn => btn.addEventListener('click', openCryptoPicker));
         ntClosers.forEach(btn => btn.addEventListener('click', closeNt));
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 closeNp();
+                closeCryptoPicker();
                 closeNt();
                 closeEtModal();
             }
