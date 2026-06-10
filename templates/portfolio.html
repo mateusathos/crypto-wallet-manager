@@ -326,27 +326,29 @@
                 </div>
 
                 <div class="relative min-h-0 flex-1">
-                    <div id="crypto-picker-list" class="grid min-h-0 min-w-0 content-start auto-rows-max gap-3 overflow-x-hidden overflow-y-auto px-4 py-5 sm:grid-cols-2 sm:px-6" style="touch-action: pan-y;">
-                        {% for crypto in cryptos %}
-                            <button
-                                type="button"
-                                class="crypto-picker-item cursor-pointer rounded-lg border border-slate-800 bg-slate-950/80 p-4 text-left hover:border-slate-700 hover:bg-slate-800/80"
-                                data-crypto-picker-item
-                                data-crypto-id="{{ crypto.id }}"
-                                data-crypto-name="{{ crypto.name }}"
-                                data-crypto-symbol="{{ crypto.symbol }}"
-                                data-crypto-image="{{ crypto.image_url }}"
-                                data-crypto-price="{{ crypto.current_price or 0 }}"
-                            >
-                                <div class="flex min-w-0 items-center gap-3">
-                                    <img src="{{ crypto.image_url }}" alt="{{ crypto.name }}" class="h-10 w-10 shrink-0 rounded-full object-cover">
-                                    <div class="min-w-0">
-                                        <p class="truncate font-semibold text-white">{{ crypto.name }}</p>
-                                        <p class="text-sm uppercase tracking-wide text-slate-400">{{ crypto.symbol }}</p>
+                    <div id="crypto-picker-list" class="min-h-0 min-w-0 overflow-x-hidden overflow-y-auto px-4 py-5 sm:px-6" style="touch-action: pan-y; -webkit-overflow-scrolling: touch;">
+                        <div class="grid min-w-0 content-start auto-rows-max gap-3 sm:grid-cols-2">
+                            {% for crypto in cryptos %}
+                                <button
+                                    type="button"
+                                    class="crypto-picker-item cursor-pointer rounded-lg border border-slate-800 bg-slate-950/80 p-4 text-left hover:border-slate-700 hover:bg-slate-800/80"
+                                    data-crypto-picker-item
+                                    data-crypto-id="{{ crypto.id }}"
+                                    data-crypto-name="{{ crypto.name }}"
+                                    data-crypto-symbol="{{ crypto.symbol }}"
+                                    data-crypto-image="{{ crypto.image_url }}"
+                                    data-crypto-price="{{ crypto.current_price or 0 }}"
+                                >
+                                    <div class="flex min-w-0 items-center gap-3">
+                                        <img src="{{ crypto.image_url }}" alt="{{ crypto.name }}" class="h-10 w-10 shrink-0 rounded-full object-cover">
+                                        <div class="min-w-0">
+                                            <p class="truncate font-semibold text-white">{{ crypto.name }}</p>
+                                            <p class="text-sm uppercase tracking-wide text-slate-400">{{ crypto.symbol }}</p>
+                                        </div>
                                     </div>
-                                </div>
-                            </button>
-                        {% endfor %}
+                                </button>
+                            {% endfor %}
+                        </div>
                     </div>
 
                     <div id="crypto-picker-empty" class="pointer-events-none absolute inset-0 hidden items-center justify-center px-6 text-center text-sm text-slate-400">
@@ -825,6 +827,7 @@
         const cpModal = document.getElementById('crypto-picker-modal');
         const cpClosers = document.querySelectorAll('[data-close-crypto-picker]');
         const cpSearch = document.getElementById('crypto-picker-search');
+        const cpList = document.getElementById('crypto-picker-list');
         const cpItems = document.querySelectorAll('[data-crypto-picker-item]');
         const cpEmpty = document.getElementById('crypto-picker-empty');
         const ntModal = document.getElementById('new-transaction-modal');
@@ -880,6 +883,9 @@
             if (!currentPortfolioId) return;
             reopenTransactionAfterPickerClose = Boolean(options.reopenTransaction);
             cpModal.classList.remove('hidden');
+            if (cpList) {
+                cpList.scrollTop = 0;
+            }
             if (cpSearch) {
                 cpSearch.value = '';
                 filterCryptoPickerItems();
