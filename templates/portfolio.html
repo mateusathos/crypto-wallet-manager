@@ -326,7 +326,7 @@
                 </div>
 
                 <div class="relative min-h-0 flex-1">
-                    <div id="crypto-picker-list" class="grid min-h-0 min-w-0 content-start auto-rows-max gap-3 overflow-x-hidden overflow-y-auto px-4 py-5 sm:grid-cols-2 sm:px-6">
+                    <div id="crypto-picker-list" class="grid min-h-0 min-w-0 content-start auto-rows-max gap-3 overflow-x-hidden overflow-y-auto px-4 py-5 sm:grid-cols-2 sm:px-6" style="touch-action: pan-y;">
                         {% for crypto in cryptos %}
                             <button
                                 type="button"
@@ -349,7 +349,7 @@
                         {% endfor %}
                     </div>
 
-                    <div id="crypto-picker-empty" class="absolute inset-0 hidden flex items-center justify-center px-6 text-center text-sm text-slate-400">
+                    <div id="crypto-picker-empty" class="pointer-events-none absolute inset-0 hidden items-center justify-center px-6 text-center text-sm text-slate-400">
                         Nenhuma criptomoeda encontrada.
                     </div>
                 </div>
@@ -926,6 +926,7 @@
             });
             if (cpEmpty) {
                 cpEmpty.classList.toggle('hidden', visibleCount > 0);
+                cpEmpty.classList.toggle('flex', visibleCount === 0);
             }
         }
 
