@@ -206,8 +206,8 @@
                             <table class="hidden min-w-[760px] w-full" id="txn-card">
                                 <thead class="border-t border-t-slate-800">
                                     <tr class="text-left text-xs">
-                                        <th class="px-4 py-3">Data</th>
                                         <th class="px-4 py-3">Tipo</th>
+                                        <th class="px-4 py-3">Data</th>
                                         <th class="px-4 py-3">Cripto</th>
                                         <th class="px-4 py-3">Quantidade</th>
                                         <th class="px-4 py-3">Preço</th>
@@ -219,8 +219,10 @@
                             </table>
                             <template id="txn-row-template">
                                 <tr class="border-t border-b border-slate-800">
+                                    <td class="px-4 py-3">
+                                        <span data-field="type" class="inline-flex items-center gap-2 rounded-md px-2 py-1 text-sm font-semibold"></span>
+                                    </td>
                                     <td class="px-4 py-3"><span data-field="date"></span></td>
-                                    <td class="px-4 py-3"><span data-field="type"></span></td>
                                     <td class="px-4 py-6">
                                         <div class="flex items-center gap-2">
                                             <img data-field="image" class="h-8 w-8 rounded-full" />
@@ -785,7 +787,14 @@
                 let data = String(t.date)
                 data = data.split("-").reverse().join("/");
                 row.querySelector('[data-field="date"]').textContent = data;
-                row.querySelector('[data-field="type"]').textContent = t.type.replace(/^./, c => c.toUpperCase());;
+                const typeLabel = t.type.replace(/^./, c => c.toUpperCase());
+                const typeEl = row.querySelector('[data-field="type"]');
+                const isSale = t.type === 'venda';
+                typeEl.innerHTML = `<i data-lucide="repeat" class="h-4 w-4"></i><span>${typeLabel}</span>`;
+                typeEl.classList.add(
+                    isSale ? 'bg-red-500/10' : 'bg-green-500/10',
+                    isSale ? 'text-red-400' : 'text-green-400'
+                );
                 row.querySelector('[data-field="image"]').src = t.image_url;
                 row.querySelector('[data-field="name"]').textContent = t.name;
                 row.querySelector('[data-field="symbol"]').textContent = t.symbol;
