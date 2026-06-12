@@ -12,8 +12,15 @@ def _normalize_email(raw_email: str) -> str:
     return (raw_email or "").strip().lower()
 
 
+def _authenticated_redirect():
+    return redirect(url_for("portfolio.portfolio"))
+
+
 @auth_bp.route("/cadastro", methods=["GET", "POST"])
 def cadastro():
+    if session.get("user_id"):
+        return _authenticated_redirect()
+
     if request.method == "POST":
         email = _normalize_email(request.form.get("email"))
         senha = request.form.get("senha") or ""
@@ -50,6 +57,9 @@ def cadastro():
 
 @auth_bp.route("/login", methods=["GET", "POST"])
 def login():
+    if session.get("user_id"):
+        return _authenticated_redirect()
+
     if request.method == "POST":
         email = _normalize_email(request.form.get("email"))
         senha = request.form.get("senha") or ""
