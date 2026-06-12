@@ -163,6 +163,32 @@ def create_portfolio():
     )
 
 
+@portfolio_bp.route("/portfolio/<int:portfolio_id>/edit", methods=["POST"])
+def edit_portfolio(portfolio_id: int):
+    if "user_id" not in session:
+        flash("Faça login para editar um portfólio", "error")
+        return redirect(url_for("auth.login"))
+
+    portfolio = Portfolio.query.filter_by(id=portfolio_id, user_id=session["user_id"]).first()
+    if not portfolio:
+        flash("Portfólio não encontrado", "error")
+        return redirect(url_for("portfolio.portfolio"))
+
+    name = request.form.get("name", portfolio.name).strip()
+    icon = normalize_portfolio_icon(request.form.get("icon", portfolio.icon))
+
+    if not name:
+        flash("Nome do portfólio é obrigatório", "error")
+        return _portfolio_redirect(portfolio_id)
+
+    portfolio.name = name
+    portfolio.icon = icon
+    db.session.commit()
+
+    flash("Portfólio atualizado com sucesso", "success")
+    return _portfolio_redirect(portfolio_id)
+
+
 @portfolio_bp.route("/transactions/create", methods=["POST"])
 def create_transaction():
     if "user_id" not in session:

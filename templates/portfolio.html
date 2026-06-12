@@ -109,14 +109,23 @@
                                 </div>
                             </div>
 
-                            <div class="flex flex-wrap gap-2 sm:gap-3">
+                            <div class="flex flex-wrap items-start gap-2 sm:gap-3">
                                 <button type="button" data-open-new-transaction class="cursor-pointer inline-flex items-center rounded-md bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 text-sm font-medium shadow-sm transition-colors">Adicionar transação</button>
-                                <button type="button" id="sp-delete-portfolio" aria-label="Excluir portfólio" class="cursor-pointer inline-flex items-center rounded-md bg-red-600 hover:bg-red-500 text-white p-2 text-base font-medium shadow-sm transition-colors">
-                                    <i data-lucide="trash-2" class="h-4 w-4"></i>
-                                </button>
-                                <button type="button" id="sp-close" class="cursor-pointer text-slate-400 hover:text-slate-200" aria-label="Fechar">
-                                    <i data-lucide="x" class="h-5 w-5"></i>
-                                </button>
+                                <div class="relative">
+                                    <button type="button" id="sp-actions-menu-button" class="cursor-pointer inline-flex items-center justify-center rounded-md border border-slate-700 bg-slate-900 p-2 text-slate-300 shadow-sm transition-colors hover:bg-slate-800 hover:text-white" aria-label="Abrir ações do portfólio" aria-expanded="false" aria-controls="sp-actions-menu">
+                                        <i data-lucide="ellipsis" class="h-5 w-5"></i>
+                                    </button>
+                                    <div id="sp-actions-menu" class="absolute right-0 top-11 z-20 hidden w-52 rounded-md border border-slate-700 bg-slate-900 p-1 shadow-xl">
+                                        <button type="button" id="sp-edit-portfolio" class="flex w-full cursor-pointer items-center gap-2 rounded px-3 py-2 text-left text-sm text-slate-200 transition-colors hover:bg-slate-800">
+                                            <i data-lucide="pencil" class="h-4 w-4"></i>
+                                            <span>Editar portfólio</span>
+                                        </button>
+                                        <button type="button" id="sp-delete-portfolio" class="flex w-full cursor-pointer items-center gap-2 rounded px-3 py-2 text-left text-sm text-red-300 transition-colors hover:bg-red-500/10 hover:text-red-200">
+                                            <i data-lucide="trash-2" class="h-4 w-4"></i>
+                                            <span>Excluir portfólio</span>
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
     
@@ -296,6 +305,63 @@
                     <div class="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-3">
                         <button type="button" class="w-full sm:w-auto cursor-pointer inline-flex items-center justify-center rounded-md bg-slate-800 hover:bg-slate-700 text-slate-100 px-3 py-2 text-sm font-medium border border-slate-700 transition-colors" data-close-new-portfolio>Cancelar</button>
                         <button type="submit" class="w-full sm:w-auto cursor-pointer inline-flex items-center justify-center rounded-md bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 text-sm font-medium shadow-sm transition-colors">Criar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Editar Portfólio -->
+    <div id="edit-portfolio-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-slate-950/70 backdrop-blur-sm" data-close-edit-portfolio></div>
+        <div class="relative z-10 mx-auto max-w-md w-full p-4 flex items-center min-h-screen">
+            <div class="w-full rounded-xl border border-slate-800 bg-slate-900 p-6 shadow-xl">
+                <div class="flex items-start justify-between">
+                    <div>
+                        <h3 class="text-xl font-semibold text-white">Editar Portfólio</h3>
+                        <p class="text-slate-400 text-sm">Altere o nome e o ícone do portfólio.</p>
+                    </div>
+                    <button type="button" class="cursor-pointer text-slate-400 hover:text-slate-200" aria-label="Fechar" data-close-edit-portfolio>
+                        <i data-lucide="x" class="h-5 w-5"></i>
+                    </button>
+                </div>
+
+                <form id="edit-portfolio-form" action="#" method="POST" class="mt-6 space-y-4">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <div class="space-y-2">
+                        <label for="edit-portfolio-name" class="block text-sm text-slate-300">Nome do portfólio</label>
+                        <input id="edit-portfolio-name" name="name" type="text" required minlength="1" maxlength="50"
+                               class="w-full rounded-md bg-slate-900 border border-slate-700 text-slate-100 placeholder-slate-400 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                               placeholder="Ex.: Longo prazo">
+                    </div>
+
+                    <div class="space-y-2">
+                        <p class="block text-sm text-slate-300">Ícone</p>
+                        <div class="grid grid-cols-4 gap-2">
+                            {% for icon in portfolio_icon_options %}
+                                <label class="cursor-pointer">
+                                    <input
+                                        type="radio"
+                                        name="icon"
+                                        value="{{ icon.name }}"
+                                        class="peer sr-only"
+                                        data-edit-portfolio-icon
+                                    >
+                                    <span
+                                        class="flex h-14 flex-col items-center justify-center gap-1 rounded-md border border-slate-700 bg-slate-900 text-slate-300 transition-colors hover:bg-slate-800 hover:text-slate-100 peer-checked:border-indigo-500 peer-checked:bg-indigo-600/20 peer-checked:text-indigo-200"
+                                        title="{{ icon.label }}"
+                                    >
+                                        <i data-lucide="{{ icon.name }}" class="h-5 w-5"></i>
+                                        <span class="text-[10px] leading-none">{{ icon.label }}</span>
+                                    </span>
+                                </label>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-3">
+                        <button type="button" class="w-full sm:w-auto cursor-pointer inline-flex items-center justify-center rounded-md bg-slate-800 hover:bg-slate-700 text-slate-100 px-3 py-2 text-sm font-medium border border-slate-700 transition-colors" data-close-edit-portfolio>Cancelar</button>
+                        <button type="submit" class="w-full sm:w-auto cursor-pointer inline-flex items-center justify-center rounded-md bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 text-sm font-medium shadow-sm transition-colors">Salvar</button>
                     </div>
                 </form>
             </div>
@@ -520,13 +586,20 @@
         const spIcon = document.getElementById('sp-icon');
         const spName = document.getElementById('sp-name');
         const spId = document.getElementById('sp-id');
-        const spClose = document.getElementById('sp-close');
         const spCost = document.getElementById('sp-cost');
         const spValue = document.getElementById('sp-value');
         const spProfit = document.getElementById('sp-profit');
         const spProfit_percentage = document.getElementById('sp-profit_percentage');
         const portfolioButtons = document.querySelectorAll('[data-portfolio-id]');
+        const spActionsMenuButton = document.getElementById('sp-actions-menu-button');
+        const spActionsMenu = document.getElementById('sp-actions-menu');
+        const spEditPortfolioBtn = document.getElementById('sp-edit-portfolio');
         const headerDeleteBtn = document.getElementById('sp-delete-portfolio');
+        const epModal = document.getElementById('edit-portfolio-modal');
+        const epForm = document.getElementById('edit-portfolio-form');
+        const epNameInput = document.getElementById('edit-portfolio-name');
+        const epIconInputs = document.querySelectorAll('[data-edit-portfolio-icon]');
+        const epClosers = document.querySelectorAll('[data-close-edit-portfolio]');
         const activesContainer = document.getElementById('portfolio-actives');
         const activeCard = document.getElementById('active-card');
         const activeEmpty = document.getElementById('active-empty');
@@ -579,6 +652,36 @@
         function portfolioUrl(portfolioId) {
             if (!portfolioId) return '/portfolio';
             return `/portfolio?selected_portfolio_id=${encodeURIComponent(portfolioId)}`;
+        }
+
+        function closeSpActionsMenu() {
+            if (!spActionsMenu || !spActionsMenuButton) return;
+            spActionsMenu.classList.add('hidden');
+            spActionsMenuButton.setAttribute('aria-expanded', 'false');
+        }
+
+        function toggleSpActionsMenu() {
+            if (!spActionsMenu || !spActionsMenuButton) return;
+            const shouldOpen = spActionsMenu.classList.contains('hidden');
+            spActionsMenu.classList.toggle('hidden', !shouldOpen);
+            spActionsMenuButton.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
+        }
+
+        function openEpModal() {
+            if (!currentPortfolioId || !epModal || !epForm || !epNameInput) return;
+            closeSpActionsMenu();
+            epForm.action = `/portfolio/${currentPortfolioId}/edit`;
+            epNameInput.value = currentPortfolioName;
+            epIconInputs.forEach((input) => {
+                input.checked = input.value === currentPortfolioIcon;
+            });
+            epModal.classList.remove('hidden');
+            epNameInput.focus();
+        }
+
+        function closeEpModal() {
+            if (!epModal) return;
+            epModal.classList.add('hidden');
         }
 
         function setButtonLoading(button, isLoading, label = 'Processando') {
@@ -749,12 +852,16 @@
         }
 
         let currentPortfolioId = null;
+        let currentPortfolioName = '';
+        let currentPortfolioIcon = 'wallet';
         let selectedBtn = null;
         portfolioButtons.forEach(btn => {
             btn.addEventListener('click', () => {
                 currentPortfolioId = btn.getAttribute('data-portfolio-id');
                 const name = btn.getAttribute('data-portfolio-name');
                 const icon = btn.getAttribute('data-portfolio-icon') || 'wallet';
+                currentPortfolioName = name;
+                currentPortfolioIcon = icon;
                 const cost = btn.getAttribute('data-portfolio-cost');
                 const value = btn.getAttribute('data-portfolio-value');
                 const profit = btn.getAttribute('data-portfolio-profit');
@@ -791,26 +898,42 @@
                 selectedBtn = btn
             });
         });
-        // Delete portfolio (header button)
+        if (spActionsMenuButton) {
+            spActionsMenuButton.addEventListener('click', (event) => {
+                event.stopPropagation();
+                toggleSpActionsMenu();
+            });
+        }
+        if (spActionsMenu) {
+            spActionsMenu.addEventListener('click', (event) => event.stopPropagation());
+        }
+        document.addEventListener('click', closeSpActionsMenu);
+        if (spEditPortfolioBtn) {
+            spEditPortfolioBtn.addEventListener('click', openEpModal);
+        }
+        epClosers.forEach((button) => button.addEventListener('click', closeEpModal));
+
+        // Delete portfolio (actions menu)
         if (headerDeleteBtn) {
-        headerDeleteBtn.addEventListener('click', async () => {
-            if (!currentPortfolioId) return;
-            if (!confirm('Excluir este portfólio e todas as suas transações?')) return;
-            setButtonLoading(headerDeleteBtn, true, 'Excluindo');
-            try {
-                const resp = await fetch(`/portfolio/${currentPortfolioId}/delete`, {
-                    method: 'POST',
-                    headers: { 'X-CSRF-Token': csrfToken },
-                });
-                if (resp.ok) {
-                    location.href = '/portfolio';
-                    return;
+            headerDeleteBtn.addEventListener('click', async () => {
+                closeSpActionsMenu();
+                if (!currentPortfolioId) return;
+                if (!confirm('Excluir este portfólio e todas as suas transações?')) return;
+                setButtonLoading(headerDeleteBtn, true, 'Excluindo');
+                try {
+                    const resp = await fetch(`/portfolio/${currentPortfolioId}/delete`, {
+                        method: 'POST',
+                        headers: { 'X-CSRF-Token': csrfToken },
+                    });
+                    if (resp.ok) {
+                        location.href = '/portfolio';
+                        return;
+                    }
+                    setButtonLoading(headerDeleteBtn, false);
+                } catch (_error) {
+                    setButtonLoading(headerDeleteBtn, false);
                 }
-                setButtonLoading(headerDeleteBtn, false);
-            } catch (_error) {
-                setButtonLoading(headerDeleteBtn, false);
-            }
-        });
+            });
         }
         // Seleciona automaticamente o primeiro portfólio ao carregar
         if (portfolioButtons.length > 0) {
@@ -819,14 +942,6 @@
                 : null;
             (selectedPortfolioButton || portfolioButtons[0]).click();
         }
-        if (spClose) {
-        spClose.addEventListener('click', () => { 
-            sp.classList.add('hidden'); 
-            if (selectedBtn) { selectedBtn.classList.remove('!bg-slate-800/80'); }
-            selectedBtn = null;
-        });
-        }
-
         // Modal: Nova Transação
         const cpModal = document.getElementById('crypto-picker-modal');
         const cpClosers = document.querySelectorAll('[data-close-crypto-picker]');
@@ -993,6 +1108,8 @@
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 closeNp();
+                closeEpModal();
+                closeSpActionsMenu();
                 closeCryptoPicker();
                 closeNt();
                 closeEtModal();
