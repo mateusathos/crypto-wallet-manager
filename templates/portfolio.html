@@ -56,11 +56,6 @@
                 </div>
             </section>
         {% else %}
-            <!-- Barra de ações -->
-            <div class="mb-6 flex gap-3 justify-start sm:justify-end">
-                <button type="button" data-open-new-portfolio class="cursor-pointer inline-flex items-center rounded-md bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 text-sm font-medium shadow-sm transition-colors">Criar Portfólio</button>
-            </div>
-
             <div class="flex h-full flex-col gap-4 lg:flex-row">
                 <!-- Lista de portfólios -->
                 <section class="w-full lg:w-72 lg:min-w-72 flex flex-col gap-2">
@@ -88,6 +83,15 @@
                             {{ portfolio.transactions | tojson }}
                         </script>
                     {% endfor %}
+                    <button
+                        type="button"
+                        data-open-new-portfolio
+                        aria-label="Criar portfólio"
+                        title="Criar portfólio"
+                        class="cursor-pointer inline-flex h-11 w-full items-center justify-center rounded-xl border border-dashed border-slate-700 bg-slate-900/30 text-slate-300 hover:border-indigo-400 hover:bg-slate-800/60 hover:text-white transition-colors"
+                    >
+                        <i data-lucide="plus" class="h-5 w-5"></i>
+                    </button>
                 </section>
     
                 <!-- Detalhes do portfólio selecionado -->
