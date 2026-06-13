@@ -7,6 +7,26 @@
         <style>
             .crypto-picker-item { transition: background-color 150ms ease, border-color 150ms ease, transform 150ms ease; min-width: 0; width: 100%; max-width: 100%; }
             .crypto-picker-item:hover { transform: translateY(-1px); }
+            .site-scrollbar {
+                scrollbar-color: #4f46e5 #0f172a;
+                scrollbar-width: thin;
+            }
+            .site-scrollbar::-webkit-scrollbar {
+                height: 10px;
+                width: 10px;
+            }
+            .site-scrollbar::-webkit-scrollbar-track {
+                background: #0f172a;
+                border-radius: 999px;
+            }
+            .site-scrollbar::-webkit-scrollbar-thumb {
+                background: #4f46e5;
+                border: 2px solid #0f172a;
+                border-radius: 999px;
+            }
+            .site-scrollbar::-webkit-scrollbar-thumb:hover {
+                background: #6366f1;
+            }
 
             /* Date input calendar icon white (WebKit) */
             input[type="date"]::-webkit-calendar-picker-indicator {
@@ -148,7 +168,7 @@
                             </div>
                         </div>
 
-                        <div id="portfolio-actives" class="mt-10 overflow-x-auto">
+                        <div id="portfolio-actives" class="site-scrollbar mt-10 overflow-x-auto">
                             <h1 class="font-semibold text-xl mb-4">Ativos</h1>
                             <table class="hidden min-w-[920px] w-full" id="active-card">
                                 <thead class="border-t border-t-slate-800">
